@@ -27,7 +27,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      HaskLox
   other-modules:
       Paths_hasklox
   hs-source-dirs:
@@ -35,6 +35,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , text
   default-language: Haskell2010
 
 executable hasklox-exe
@@ -47,6 +48,7 @@ executable hasklox-exe
   build-depends:
       base >=4.7 && <5
     , hasklox
+    , text
   default-language: Haskell2010
 
 test-suite hasklox-test
@@ -60,4 +62,5 @@ test-suite hasklox-test
   build-depends:
       base >=4.7 && <5
     , hasklox
+    , text
   default-language: Haskell2010
