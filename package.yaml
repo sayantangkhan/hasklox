@@ -9,6 +9,10 @@ copyright:           "2022 Sayantan Khan"
 extra-source-files:
 - README.md
 - CHANGELOG.md
+- src/HaskLox/Scanner.x
+
+default-extensions:
+- OverloadedStrings
 
 # Metadata used when publishing your package
 synopsis:            Haskell implementation of the Lox interpreter from 'Crafting Interpreters'
@@ -21,7 +25,8 @@ description:         Please see the README on GitHub at <https://github.com/saya
 
 dependencies:
 - base >= 4.7 && < 5
-- text
+- bytestring
+- array
 
 ghc-options:
 - -Wall

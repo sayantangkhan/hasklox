@@ -1,13 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module HaskLox
   ( mainFunc,
   )
 where
 
 import Control.Monad (unless)
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import qualified Data.ByteString as B
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO
@@ -26,18 +23,18 @@ mainFunc = do
 
 runPrompt :: IO ()
 runPrompt = do
-  TIO.putStr "> "
+  B.putStr "> "
   hFlush stdout
   eof <- isEOF
   unless eof $ do
-    line <- TIO.getLine
+    line <- B.getLine
     run line
     runPrompt
 
 runFile :: FilePath -> IO ()
 runFile filePath = do
-  fileContents <- TIO.readFile filePath
+  fileContents <- B.readFile filePath
   run fileContents
 
-run :: T.Text -> IO ()
+run :: B.ByteString -> IO ()
 run _ = return ()
