@@ -8,7 +8,10 @@ module HaskLox.Scanner(
   , alexMonadScan
   , Range (..)
   , RangedToken (..)
-  , TokenType (..)
+  , TokenType (..),
+  extractInt,
+  extractFloat,
+  scanMany
 ) where
 
 -- Documentation for how to use Alex
@@ -97,6 +100,15 @@ tokens :-
 <0> \/ {tokenBuild Slash}
 <0> \* {tokenBuild Star}
 
+<0> \! {tokenBuild Bang}
+<0> \!\= {tokenBuild BangEqual}
+<0> \= {tokenBuild Equal}
+<0> \=\= {tokenBuild EqualEqual}
+<0> \> {tokenBuild Greater}
+<0> \>\= {tokenBuild GreaterEqual}
+<0> \< {tokenBuild Less}
+<0> \<\= {tokenBuild LessEqual}
+
 {
 
 data TokenType = LeftParen -- (
@@ -146,10 +158,21 @@ data TokenType = LeftParen -- (
                | Eof
     deriving (Eq, Show)
 
+extractInt :: TokenType -> Maybe Int
+extractInt (IntNumber i) = Just i
+extractInt _ = Nothing
+
+extractFloat :: TokenType -> Maybe Float
+extractFloat (FloatNumber f) = Just f
+extractFloat _ = Nothing
+
 data Range = Range
   { rstart :: AlexPosn
   , rstop :: AlexPosn
-  } deriving (Eq, Show)
+  } deriving (Eq)
+
+instance Show Range where
+  show (Range (AlexPn _ l1 c1) (AlexPn _ l2 c2)) = "(l" ++ show l1 ++"c" ++ show c1 ++ "..l" ++ show l2 ++ "c" ++ show c2 ++ ")"
 
 data RangedToken = RangedToken
   { rtToken :: TokenType
@@ -292,14 +315,14 @@ alexEOF = do
     (pos, _, _, _) <- alexGetInput
     return $ RangedToken Eof (Range pos pos)
 
--- scanMany :: ByteString -> Either String [RangedToken]
--- scanMany input = runAlex input go
---   where
---     go = do
---       output <- alexMonadScan
---       if rtToken output == Eof
---         then pure [output]
---         else (output :) <$> go
+scanMany :: ByteString -> Either String [RangedToken]
+scanMany input = runAlex input go
+  where
+    go = do
+      output <- alexMonadScan
+      if rtToken output == Eof
+        then pure [output]
+        else (output :) <$> go
 
 }
 

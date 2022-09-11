@@ -29,6 +29,8 @@ source-repository head
 library
   exposed-modules:
       HaskLox
+      HaskLox.AST
+      HaskLox.Parser
       HaskLox.Scanner
   other-modules:
       Paths_hasklox
