@@ -66,11 +66,11 @@ while { Scan.RangedToken Scan.While _ }
 '.' { Scan.RangedToken Scan.Dot _ }
 ';' { Scan.RangedToken Scan.Semicolon _ }
 
-%right in
-%nonassoc '>' '<' '!=' '==' '<=' '>='
+%left '==' '!='
+%left '>' '<' '<=' '>='
 %left '+' '-'
 %left '*' '/'
-%left '!' NEG
+%right '!' NEG
 %%
 
 expression :: { AST.Expression Scan.Range }
@@ -107,9 +107,9 @@ grouping :: { AST.Expression Scan.Range }
 
 {
 parseError :: Scan.RangedToken -> Scan.Alex a
-parseError _ = do
+parseError token = do
   (Scan.AlexPn _ line column, _, _, _) <- Scan.alexGetInput
-  Scan.alexError $ "Parse error at line " <> show line <> ", column " <> show column
+  Scan.alexError $ "Parse error at line " <> show line <> ", column " <> show column <> ". Found " <> show token
 
 lexer :: (Scan.RangedToken -> Scan.Alex a) -> Scan.Alex a
 lexer = (=<< Scan.alexMonadScan)

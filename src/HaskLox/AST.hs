@@ -65,16 +65,16 @@ prettyPrintWithOffset (Unary range op expression) offset =
     ++ " "
     ++ show range
     ++ "\n"
-    ++ prettyPrintWithOffset expression (offset + 1)
+    ++ prettyPrintWithOffset expression (offset + 2)
 prettyPrintWithOffset (Binary range op exp1 exp2) offset =
   concat (replicate offset " ")
     ++ show op
     ++ " "
     ++ show range
     ++ "\n"
-    ++ prettyPrintWithOffset exp1 (offset + 1)
+    ++ prettyPrintWithOffset exp1 (offset + 2)
     ++ "\n"
-    ++ prettyPrintWithOffset exp2 (offset + 1)
+    ++ prettyPrintWithOffset exp2 (offset + 2)
 
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
