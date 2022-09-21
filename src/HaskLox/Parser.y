@@ -82,6 +82,7 @@ expression :: { AST.Expression Scan.Range }
 literal :: { AST.Literal Scan.Range }
   : int { unTok $1 (\range -> \token -> AST.Number range (AST.LoxInt (fromJust $ Scan.extractInt token))) }
   | float { unTok $1 (\range -> \token -> AST.Number range (AST.LoxFloat (fromJust $ Scan.extractFloat token))) }
+  | string { unTok $1 (\range -> \token -> AST.LoxString range (fromJust $ Scan.extractString token)) }
   | true { unTok $1 (\range -> \_ -> AST.LoxTrue range) }
   | false { unTok $1 (\range -> \_ -> AST.LoxFalse range) }
   | nil { unTok $1 (\range -> \_ -> AST.Nil range) }

@@ -1,4 +1,4 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), HasMetadata (..), extendOuterMetadata) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq) where
 
 import Data.ByteString.Lazy.Internal (ByteString)
 
@@ -10,12 +10,26 @@ data LoxNum
   | LoxFloat Float
   deriving (Eq, Show)
 
+instance Ord LoxNum where
+  LoxInt x <= LoxInt y = x <= y
+  LoxFloat x <= LoxFloat y = x <= y
+  LoxFloat x <= LoxInt y = x <= fromIntegral y
+  LoxInt x <= LoxFloat y = fromIntegral x <= y
+
 data Literal a
   = Number a LoxNum
   | LoxString a ByteString
   | LoxTrue a
   | LoxFalse a
   | Nil a
+
+nonMetadataEq :: Literal a -> Literal a -> Bool
+nonMetadataEq (Number _ x) (Number _ y) = x == y
+nonMetadataEq (LoxString _ x) (LoxString _ y) = x == y
+nonMetadataEq (LoxTrue _) (LoxTrue _) = True
+nonMetadataEq (LoxFalse _) (LoxFalse _) = True
+nonMetadataEq (Nil _) (Nil _) = True
+nonMetadataEq _ _ = False
 
 instance (Show a) => Show (Literal a) where
   show (Number a (LoxInt n)) = show n ++ " " ++ show a

@@ -11,6 +11,7 @@ module HaskLox.Scanner(
   , TokenType (..),
   extractInt,
   extractFloat,
+  extractString,
   scanMany
 ) where
 
@@ -165,6 +166,10 @@ extractInt _ = Nothing
 extractFloat :: TokenType -> Maybe Float
 extractFloat (FloatNumber f) = Just f
 extractFloat _ = Nothing
+
+extractString :: TokenType -> Maybe ByteString
+extractString (LoxString b) = Just b
+extractString _ = Nothing
 
 data Range = Range
   { rstart :: AlexPosn
