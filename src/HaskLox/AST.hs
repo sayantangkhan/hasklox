@@ -1,4 +1,4 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq) where
 
 import Data.ByteString.Lazy.Internal (ByteString)
 
@@ -68,6 +68,11 @@ data Expression a
   = LiteralExp a (Literal a)
   | Unary a UnaryOp (Expression a)
   | Binary a BinaryOp (Expression a) (Expression a)
+
+data Statement a
+  = ExprStmt (Expression a)
+  | PrintStmt (Expression a)
+  deriving (Show)
 
 prettyPrintWithOffset :: (Show a) => Expression a -> Int -> String
 prettyPrintWithOffset (LiteralExp _ literal) offset =

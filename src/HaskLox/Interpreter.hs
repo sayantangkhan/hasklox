@@ -3,10 +3,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module HaskLox.Interpreter (evalExpression, runInterpreter) where
+module HaskLox.Interpreter (evalProgram, runInterpreter) where
 
 import Control.Monad.Except
-import Control.Monad.ST
 import qualified Data.Text as T
 import qualified HaskLox.AST as AST
 
@@ -19,13 +18,26 @@ data EvalError a
 data Environment = Environment
   deriving (Eq, Show)
 
-newtype InterpreterState e s a = InterpreterState {runInterpreterState :: ExceptT e (ST s) a}
-  deriving (Functor, Applicative, Monad, MonadError e)
+newtype InterpreterState e a = InterpreterState {runInterpreterState :: ExceptT e IO a}
+  deriving (Functor, Applicative, Monad, MonadError e, MonadIO)
 
-runInterpreter :: (forall s. InterpreterState e s a) -> Either e a
-runInterpreter interpreter = runST $ runExceptT $ runInterpreterState interpreter
+runInterpreter :: InterpreterState e a -> IO (Either e a)
+runInterpreter interpreter = runExceptT $ runInterpreterState interpreter
 
-evalExpression :: AST.Expression m -> InterpreterState (EvalError m) s (AST.Expression m)
+evalProgram :: (Show m) => [AST.Statement m] -> InterpreterState (EvalError m) ()
+evalProgram = mapM_ evalStatement
+
+evalStatement :: (Show m) => AST.Statement m -> InterpreterState (EvalError m) ()
+evalStatement = \case
+  AST.ExprStmt expression -> do
+    _ <- evalExpression expression
+    return ()
+  AST.PrintStmt expression -> do
+    parsedExpression <- evalExpression expression
+    liftIO $ print parsedExpression
+    return ()
+
+evalExpression :: AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
 evalExpression = \case
   AST.LiteralExp metadata literal -> do
     return $ AST.LiteralExp metadata literal
@@ -37,7 +49,7 @@ evalExpression = \case
     rightEvaled <- evalExpression right
     applyBinaryOp op metadata leftEvaled rightEvaled
 
-applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState (EvalError m) s (AST.Expression m)
+applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
 applyUnaryOp AST.Neg = \case
   (AST.LiteralExp m literal) -> case literal of
     AST.Number m' ln -> do
@@ -57,7 +69,7 @@ applyUnaryOp AST.Exclamation = \case
   _ -> do
     throwError $ UnreachableError "Should have evaluated expression to a literal"
 
-applyBinaryOp :: AST.BinaryOp -> m -> AST.Expression m -> AST.Expression m -> InterpreterState (EvalError m) s (AST.Expression m)
+applyBinaryOp :: AST.BinaryOp -> m -> AST.Expression m -> AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
 applyBinaryOp AST.IsEqual metadata leftArg rightArg = case (leftArg, rightArg) of
   (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> do
     if leftLiteral `AST.nonMetadataEq` rightLiteral

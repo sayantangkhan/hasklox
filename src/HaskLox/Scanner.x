@@ -299,7 +299,7 @@ endString inp@(start', _, str, _) len = do
   modifyAus $ \s -> s{ausString = Nothing}
   modifyAus $ \s -> s{ausStringStart = Nothing}
   alexSetStartCode 0
-  _ <- skip inp len
+  -- _ <- skip inp len
   return RangedToken
     {
       rtToken = LoxString lexedString

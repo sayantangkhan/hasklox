@@ -12,7 +12,7 @@ import qualified HaskLox.AST as AST
 import qualified HaskLox.Scanner as Scan
 }
 
-%name parseLox expression
+%name parseLox program
 %tokentype { Scan.RangedToken }
 %error { parseError }
 %monad { Scan.Alex } { >>= } { pure }
@@ -72,6 +72,23 @@ while { Scan.RangedToken Scan.While _ }
 %left '*' '/'
 %right '!' NEG
 %%
+
+program :: { [AST.Statement Scan.Range] }
+  : reversedProgram { reverse $1 }
+
+reversedProgram :: { [AST.Statement Scan.Range] }
+  : {- empty -} { [] }
+  | reversedProgram statement { $2 : $1 }
+
+statement :: { AST.Statement Scan.Range }
+  : exprStmt { $1 }
+  | printStmt { $1 }
+
+printStmt :: { AST.Statement Scan.Range }
+  : print expression ';' { AST.PrintStmt $2 }
+
+exprStmt :: { AST.Statement Scan.Range }
+  : expression ';' { AST.ExprStmt $1 }
 
 expression :: { AST.Expression Scan.Range }
   : literal { AST.LiteralExp (AST.info $1) $1 }

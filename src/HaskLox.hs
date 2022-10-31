@@ -5,6 +5,10 @@ where
 
 import Control.Monad (unless)
 import qualified Data.ByteString as B
+import Data.ByteString.Lazy (fromStrict)
+import HaskLox.Interpreter (evalProgram, runInterpreter)
+import HaskLox.Parser (parseLox)
+import HaskLox.Scanner (runAlex)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO
@@ -37,4 +41,13 @@ runFile filePath = do
   run fileContents
 
 run :: B.ByteString -> IO ()
-run _ = return ()
+run input = do
+  let parseResult = runAlex (fromStrict input) parseLox
+  case parseResult of
+    Left errorMessage -> putStrLn errorMessage
+    Right parsed -> do
+      runRes <- runInterpreter (evalProgram parsed)
+      case runRes of
+        Left errorMessage -> print errorMessage
+        Right _ -> return ()
+  return ()
