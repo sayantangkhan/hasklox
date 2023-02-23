@@ -24,8 +24,14 @@ newtype InterpreterState e a = InterpreterState {runInterpreterState :: ExceptT 
 runInterpreter :: InterpreterState e a -> IO (Either e a)
 runInterpreter = runExceptT . runInterpreterState
 
-evalProgram :: [AST.Statement m] -> InterpreterState (EvalError m) ()
-evalProgram = mapM_ evalStatement
+evalProgram :: [AST.Declaration m] -> InterpreterState (EvalError m) ()
+evalProgram = mapM_ evalDeclaration
+
+evalDeclaration :: AST.Declaration m -> InterpreterState (EvalError m) ()
+evalDeclaration = \case
+  AST.VarDeclaration _ name possible_value -> do
+    return () -- does nothing at all
+  AST.InnerStatement statement -> evalStatement statement
 
 evalStatement :: AST.Statement m -> InterpreterState (EvalError m) ()
 evalStatement = \case

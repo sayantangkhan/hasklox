@@ -10,6 +10,7 @@ extra-source-files:
 - README.md
 - CHANGELOG.md
 - src/HaskLox/Scanner.x
+- src/HaskLox/Parser.y
 
 default-extensions:
 - OverloadedStrings
@@ -30,6 +31,10 @@ dependencies:
 - array
 - text
 - mtl
+
+build-tools:
+  - alex
+  - happy
 
 ghc-options:
 - -Wall

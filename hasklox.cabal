@@ -21,6 +21,7 @@ extra-source-files:
     README.md
     CHANGELOG.md
     src/HaskLox/Scanner.x
+    src/HaskLox/Parser.y
 
 source-repository head
   type: git
@@ -43,6 +44,9 @@ library
       OverloadedStrings
       ImportQualifiedPost
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-tools:
+      alex
+    , happy
   build-depends:
       array
     , base >=4.7 && <5
@@ -63,6 +67,9 @@ executable hasklox-exe
       OverloadedStrings
       ImportQualifiedPost
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-tools:
+      alex
+    , happy
   build-depends:
       array
     , base >=4.7 && <5
@@ -85,6 +92,9 @@ test-suite hasklox-test
       OverloadedStrings
       ImportQualifiedPost
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-tools:
+      alex
+    , happy
   build-depends:
       array
     , base >=4.7 && <5

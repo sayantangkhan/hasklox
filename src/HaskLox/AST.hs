@@ -1,4 +1,4 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq, ndShow) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq, ndShow) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
@@ -86,12 +86,18 @@ data Expression a
   = LiteralExp a (Literal a)
   | Unary a UnaryOp (Expression a)
   | Binary a BinaryOp (Expression a) (Expression a)
+  | Identifier a ByteString
 
 -- The show instance for this datatype is defined later
 
 data Statement a
   = ExprStmt (Expression a)
   | PrintStmt (Expression a)
+  deriving (Show)
+
+data Declaration a
+  = VarDeclaration a ByteString (Maybe (Expression a))
+  | InnerStatement (Statement a)
   deriving (Show)
 
 prettyPrintWithOffset :: (Show a) => Expression a -> Int -> String
@@ -114,6 +120,11 @@ prettyPrintWithOffset (Binary range op exp1 exp2) offset =
     ++ prettyPrintWithOffset exp1 (offset + 2)
     ++ "\n"
     ++ prettyPrintWithOffset exp2 (offset + 2)
+prettyPrintWithOffset (Identifier range name) offset =
+  concat (replicate offset " ")
+    ++ unpack name
+    ++ " "
+    ++ show range
 
 ndPrettyPrintWithOffset :: Expression a -> Int -> String
 ndPrettyPrintWithOffset (LiteralExp _ literal) offset =
@@ -131,6 +142,9 @@ ndPrettyPrintWithOffset (Binary _ op exp1 exp2) offset =
     ++ ndPrettyPrintWithOffset exp1 (offset + 2)
     ++ "\n"
     ++ ndPrettyPrintWithOffset exp2 (offset + 2)
+ndPrettyPrintWithOffset (Identifier _ name) offset =
+  concat (replicate offset " ")
+    ++ unpack name
 
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
@@ -142,8 +156,10 @@ instance HasMetadata Expression where
   info (LiteralExp a _) = a
   info (Unary a _ _) = a
   info (Binary a _ _ _) = a
+  info (Identifier a _) = a
 
 extendOuterMetadata :: a -> Expression a -> Expression a
 extendOuterMetadata f (LiteralExp _ b) = LiteralExp f b
 extendOuterMetadata f (Unary _ b c) = Unary f b c
 extendOuterMetadata f (Binary _ b c d) = Binary f b c d
+extendOuterMetadata f (Identifier _ b) = Identifier f b
