@@ -13,6 +13,7 @@ extra-source-files:
 
 default-extensions:
 - OverloadedStrings
+- ImportQualifiedPost
 
 # Metadata used when publishing your package
 synopsis:            Haskell implementation of the Lox interpreter from 'Crafting Interpreters'

@@ -1,9 +1,13 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq, ndShow) where
 
+import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
 
 class HasMetadata n where
   info :: n m -> m
+
+class NonDebugShow n where
+  ndShow :: n -> String
 
 data LoxNum
   = LoxInt Int
@@ -39,6 +43,14 @@ instance (Show a) => Show (Literal a) where
   show (LoxFalse a) = "false" ++ " " ++ show a
   show (Nil a) = "nil" ++ " " ++ show a
 
+instance NonDebugShow (Literal a) where
+  ndShow (Number _ (LoxInt n)) = show n
+  ndShow (Number _ (LoxFloat n)) = show n
+  ndShow (LoxString _ b) = unpack b
+  ndShow (LoxTrue _) = "true"
+  ndShow (LoxFalse _) = "false"
+  ndShow (Nil _) = "nil"
+
 instance HasMetadata Literal where
   info (Number a _) = a
   info (LoxString a _) = a
@@ -50,6 +62,9 @@ data UnaryOp
   = Neg -- -
   | Exclamation -- !
   deriving (Eq, Show)
+
+instance NonDebugShow UnaryOp where
+  ndShow = show
 
 data BinaryOp
   = IsEqual -- ==
@@ -64,10 +79,15 @@ data BinaryOp
   | Divide
   deriving (Eq, Show)
 
+instance NonDebugShow BinaryOp where
+  ndShow = show
+
 data Expression a
   = LiteralExp a (Literal a)
   | Unary a UnaryOp (Expression a)
   | Binary a BinaryOp (Expression a) (Expression a)
+
+-- The show instance for this datatype is defined later
 
 data Statement a
   = ExprStmt (Expression a)
@@ -95,8 +115,28 @@ prettyPrintWithOffset (Binary range op exp1 exp2) offset =
     ++ "\n"
     ++ prettyPrintWithOffset exp2 (offset + 2)
 
+ndPrettyPrintWithOffset :: Expression a -> Int -> String
+ndPrettyPrintWithOffset (LiteralExp _ literal) offset =
+  concat (replicate offset " ")
+    ++ ndShow literal
+ndPrettyPrintWithOffset (Unary _ op expression) offset =
+  concat (replicate offset " ")
+    ++ ndShow op
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset expression (offset + 2)
+ndPrettyPrintWithOffset (Binary _ op exp1 exp2) offset =
+  concat (replicate offset " ")
+    ++ ndShow op
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp1 (offset + 2)
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp2 (offset + 2)
+
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
+
+instance NonDebugShow (Expression a) where
+  ndShow expression = ndPrettyPrintWithOffset expression 0
 
 instance HasMetadata Expression where
   info (LiteralExp a _) = a

@@ -6,8 +6,8 @@
 module HaskLox.Interpreter (evalProgram, runInterpreter) where
 
 import Control.Monad.Except
-import qualified Data.Text as T
-import qualified HaskLox.AST as AST
+import Data.Text qualified as T
+import HaskLox.AST qualified as AST
 
 data EvalError a
   = TypeError a T.Text
@@ -22,19 +22,19 @@ newtype InterpreterState e a = InterpreterState {runInterpreterState :: ExceptT 
   deriving (Functor, Applicative, Monad, MonadError e, MonadIO)
 
 runInterpreter :: InterpreterState e a -> IO (Either e a)
-runInterpreter interpreter = runExceptT $ runInterpreterState interpreter
+runInterpreter = runExceptT . runInterpreterState
 
-evalProgram :: (Show m) => [AST.Statement m] -> InterpreterState (EvalError m) ()
+evalProgram :: [AST.Statement m] -> InterpreterState (EvalError m) ()
 evalProgram = mapM_ evalStatement
 
-evalStatement :: (Show m) => AST.Statement m -> InterpreterState (EvalError m) ()
+evalStatement :: AST.Statement m -> InterpreterState (EvalError m) ()
 evalStatement = \case
   AST.ExprStmt expression -> do
     _ <- evalExpression expression
     return ()
   AST.PrintStmt expression -> do
     parsedExpression <- evalExpression expression
-    liftIO $ print parsedExpression
+    liftIO $ putStrLn $ AST.ndShow parsedExpression
     return ()
 
 evalExpression :: AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
