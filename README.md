@@ -50,6 +50,8 @@ var b = a;
 This should print 4, but instead will print 5, which is incorrect.
 3. Consider a mixture of lazy and eager. Eagerly evaluate the RHS for variable declaration, but exercise the right amount of laziness to make function declarations work.
 
+The book definitely evaluates the RHS before storing the value, so they are probably going with approach 3.
+
 ### Parser
 
 Rather than using a parser combinator library like `megaparsec`, we decided to go with `happy`, a `yacc` style parser generator. The pros of this choice were a simplified parser, and avoiding ambiguity in the grammar, but it comes with a major downside of having really poor error messages. A possible future change would be to rewrite the parser using `megaparsec`, and add better error messages. However, to do that, we'll need to stratify the grammar to get rid of left recursion.

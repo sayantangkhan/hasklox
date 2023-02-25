@@ -87,6 +87,7 @@ data Expression a
   | Unary a UnaryOp (Expression a)
   | Binary a BinaryOp (Expression a) (Expression a)
   | Identifier a ByteString
+  | IdentifierAssignment a ByteString (Expression a)
 
 -- The show instance for this datatype is defined later
 
@@ -125,6 +126,11 @@ prettyPrintWithOffset (Identifier range name) offset =
     ++ unpack name
     ++ " "
     ++ show range
+prettyPrintWithOffset (IdentifierAssignment _ name expression) offset =
+  concat (replicate offset " ")
+    ++ unpack name
+    ++ " = \n"
+    ++ prettyPrintWithOffset expression (offset + 2)
 
 ndPrettyPrintWithOffset :: Expression a -> Int -> String
 ndPrettyPrintWithOffset (LiteralExp _ literal) offset =
@@ -145,6 +151,11 @@ ndPrettyPrintWithOffset (Binary _ op exp1 exp2) offset =
 ndPrettyPrintWithOffset (Identifier _ name) offset =
   concat (replicate offset " ")
     ++ unpack name
+ndPrettyPrintWithOffset (IdentifierAssignment _ name expression) offset =
+  concat (replicate offset " ")
+    ++ unpack name
+    ++ " = \n"
+    ++ ndPrettyPrintWithOffset expression (offset + 2)
 
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
@@ -157,9 +168,11 @@ instance HasMetadata Expression where
   info (Unary a _ _) = a
   info (Binary a _ _ _) = a
   info (Identifier a _) = a
+  info (IdentifierAssignment a _ _) = a
 
 extendOuterMetadata :: a -> Expression a -> Expression a
 extendOuterMetadata f (LiteralExp _ b) = LiteralExp f b
 extendOuterMetadata f (Unary _ b c) = Unary f b c
 extendOuterMetadata f (Binary _ b c d) = Binary f b c d
 extendOuterMetadata f (Identifier _ b) = Identifier f b
+extendOuterMetadata f (IdentifierAssignment _ b c) = IdentifierAssignment f b c

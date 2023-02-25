@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import HaskLox.AST qualified as AST
-import HaskLox.Environment (Environment, addIdentifier, lookupIdentifier)
+import HaskLox.Environment (Environment, addIdentifier, identifierIsPresent, lookupIdentifier, modifyIdentifier)
 
 data EvalError m
   = TypeError m T.Text
@@ -37,9 +37,13 @@ evalProgram = mapM_ evalDeclaration
 
 evalDeclaration :: AST.Declaration m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalDeclaration = \case
-  AST.VarDeclaration _ name possibleValue -> do
+  AST.VarDeclaration _ name possibleThunk -> do
     environment <- ask
-    liftIO $ addIdentifier name possibleValue environment
+    case possibleThunk of
+      Nothing -> liftIO $ addIdentifier name Nothing environment
+      Just thunk -> do
+        possibleValue <- evalExpression thunk
+        liftIO $ addIdentifier name (Just possibleValue) environment
   AST.InnerStatement statement -> evalStatement statement
 
 evalStatement :: AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
@@ -69,6 +73,16 @@ evalExpression = \case
     case possibleValue of
       Just (Just value) -> return value
       _ -> throwError $ ValueNotFoundError metadata ("Variable " <> (toStrict . decodeUtf8) name <> " not found in scope.")
+  AST.IdentifierAssignment metadata name expression -> do
+    -- We evaluate the RHS first, and then try to assign it to the left hand side
+    evaledExpression <- evalExpression expression
+    -- We then check if the name is actually in any scope
+    environment <- ask
+    isPresent <- liftIO $ identifierIsPresent name environment
+    -- Depending on whether the value is present, we either re-assign it, or throw a value error.
+    if isPresent
+      then liftIO (modifyIdentifier name (const (Just evaledExpression)) environment) >> return evaledExpression
+      else throwError $ ValueNotFoundError metadata ("Variable " <> (toStrict . decodeUtf8) name <> " not found in scope.")
 
 applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
 applyUnaryOp AST.Neg = \case
