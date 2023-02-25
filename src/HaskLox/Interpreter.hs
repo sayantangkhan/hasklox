@@ -1,39 +1,48 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
 module HaskLox.Interpreter (evalProgram, runInterpreter) where
 
 import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Text qualified as T
+import Data.Text.Lazy (toStrict)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import HaskLox.AST qualified as AST
+import HaskLox.Environment (Environment, addIdentifier, lookupIdentifier)
 
-data EvalError a
-  = TypeError a T.Text
-  | ArithmeticError a T.Text
+data EvalError m
+  = TypeError m T.Text
+  | ArithmeticError m T.Text
+  | ValueNotFoundError m T.Text
   | UnreachableError T.Text
   deriving (Eq, Show)
 
-data Environment = Environment
-  deriving (Eq, Show)
+newtype InterpreterState d e a = InterpreterState {runInterpreterState :: ReaderT (Environment d) (ExceptT e IO) a}
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadError e,
+      MonadIO,
+      MonadReader (Environment d)
+    )
 
-newtype InterpreterState e a = InterpreterState {runInterpreterState :: ExceptT e IO a}
-  deriving (Functor, Applicative, Monad, MonadError e, MonadIO)
+runInterpreter :: Environment d -> InterpreterState d e a -> IO (Either e a)
+runInterpreter environment interpreter = runExceptT (runReaderT (runInterpreterState interpreter) environment)
 
-runInterpreter :: InterpreterState e a -> IO (Either e a)
-runInterpreter = runExceptT . runInterpreterState
-
-evalProgram :: [AST.Declaration m] -> InterpreterState (EvalError m) ()
+evalProgram :: [AST.Declaration m] -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalProgram = mapM_ evalDeclaration
 
-evalDeclaration :: AST.Declaration m -> InterpreterState (EvalError m) ()
+evalDeclaration :: AST.Declaration m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalDeclaration = \case
-  AST.VarDeclaration _ name possible_value -> do
-    return () -- does nothing at all
+  AST.VarDeclaration _ name possibleValue -> do
+    environment <- ask
+    liftIO $ addIdentifier name possibleValue environment
   AST.InnerStatement statement -> evalStatement statement
 
-evalStatement :: AST.Statement m -> InterpreterState (EvalError m) ()
+evalStatement :: AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalStatement = \case
   AST.ExprStmt expression -> do
     _ <- evalExpression expression
@@ -43,7 +52,7 @@ evalStatement = \case
     liftIO $ putStrLn $ AST.ndShow parsedExpression
     return ()
 
-evalExpression :: AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
+evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
 evalExpression = \case
   AST.LiteralExp metadata literal -> do
     return $ AST.LiteralExp metadata literal
@@ -54,8 +63,14 @@ evalExpression = \case
     leftEvaled <- evalExpression left
     rightEvaled <- evalExpression right
     applyBinaryOp op metadata leftEvaled rightEvaled
+  AST.Identifier metadata name -> do
+    environment <- ask
+    possibleValue <- liftIO $ lookupIdentifier name environment
+    case possibleValue of
+      Just (Just value) -> return value
+      _ -> throwError $ ValueNotFoundError metadata ("Variable " <> (toStrict . decodeUtf8) name <> " not found in scope.")
 
-applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
+applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
 applyUnaryOp AST.Neg = \case
   (AST.LiteralExp m literal) -> case literal of
     AST.Number m' ln -> do
@@ -75,7 +90,7 @@ applyUnaryOp AST.Exclamation = \case
   _ -> do
     throwError $ UnreachableError "Should have evaluated expression to a literal"
 
-applyBinaryOp :: AST.BinaryOp -> m -> AST.Expression m -> AST.Expression m -> InterpreterState (EvalError m) (AST.Expression m)
+applyBinaryOp :: AST.BinaryOp -> m -> AST.Expression m -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
 applyBinaryOp AST.IsEqual metadata leftArg rightArg = case (leftArg, rightArg) of
   (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> do
     if leftLiteral `AST.nonMetadataEq` rightLiteral

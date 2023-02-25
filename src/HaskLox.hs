@@ -4,11 +4,13 @@ module HaskLox
 where
 
 import Control.Monad (unless)
-import qualified Data.ByteString as B
+import Data.ByteString qualified as B
 import Data.ByteString.Lazy (fromStrict)
+import HaskLox.AST (Expression)
+import HaskLox.Environment (Environment, initializeEnvironment)
 import HaskLox.Interpreter (evalProgram, runInterpreter)
 import HaskLox.Parser (parseLox)
-import HaskLox.Scanner (runAlex)
+import HaskLox.Scanner (Range, runAlex)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO
@@ -27,27 +29,32 @@ mainFunc = do
 
 runPrompt :: IO ()
 runPrompt = do
+  environment <- initializeEnvironment
+  runPrompt' environment
+
+runPrompt' :: Environment (Expression Range) -> IO ()
+runPrompt' environment = do
   B.putStr "> "
   hFlush stdout
   eof <- isEOF
   unless eof $ do
     line <- B.getLine
-    run line
-    runPrompt
+    run line environment
+    runPrompt' environment
 
 runFile :: FilePath -> IO ()
 runFile filePath = do
   fileContents <- B.readFile filePath
-  run fileContents
+  environment <- initializeEnvironment
+  run fileContents environment
 
-run :: B.ByteString -> IO ()
-run input = do
+run :: B.ByteString -> Environment (Expression Range) -> IO ()
+run input environment = do
   let parseResult = runAlex (fromStrict input) parseLox
   case parseResult of
     Left errorMessage -> putStrLn errorMessage
     Right parsed -> do
-      runRes <- runInterpreter (evalProgram parsed)
+      runRes <- runInterpreter environment (evalProgram parsed)
       case runRes of
         Left errorMessage -> print errorMessage
         Right _ -> return ()
-  return ()

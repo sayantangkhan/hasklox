@@ -85,8 +85,8 @@ declaration :: { AST.Declaration Scan.Range }
   | statement { AST.InnerStatement $1 }
 
 varDeclaration :: { AST.Declaration Scan.Range }
-  : var identifier '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (AST.info $4)) ( unTok $2 (\range -> \token -> (fromJust $ Scan.extractIdentifier token)) ) (Just $4) }
-  | var identifier ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (Scan.rtRange $2)) ( unTok $2 (\range -> \token -> (fromJust $ Scan.extractIdentifier token)) ) Nothing }
+  : var identifierName '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (AST.info $4)) (snd $2) (Just $4) }
+  | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (fst $2)) (snd $2) Nothing }
 
 statement :: { AST.Statement Scan.Range }
   : exprStmt { $1 }
@@ -103,7 +103,10 @@ expression :: { AST.Expression Scan.Range }
   | unary { $1 }
   | binary { $1 }
   | grouping { $1 }
-  | identifier { unTok $1 (\range -> \token -> AST.Identifier range (fromJust $ Scan.extractIdentifier token))}
+  | identifierName { AST.Identifier (fst $1) (snd $1) }
+
+identifierName :: { (Scan.Range, ByteString) }
+  : identifier { unTok $1 (\range -> \token -> (range, (fromJust $ Scan.extractIdentifier token)))}
 
 literal :: { AST.Literal Scan.Range }
   : int { unTok $1 (\range -> \token -> AST.Number range (AST.LoxInt (fromJust $ Scan.extractInt token))) }
