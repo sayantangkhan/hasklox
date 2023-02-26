@@ -67,6 +67,8 @@ To make this work, I need to do two things.
 1. Detect when a parse failure is due to encountering an EOF.
 2. Re-read that line in multiline REPL, i.e. rewind the parser.
 
+Re 1, a hacky solution would be to encode the last seen token in the lexer monad.
+
 ### Parser
 
 Rather than using a parser combinator library like `megaparsec`, we decided to go with `happy`, a `yacc` style parser generator. The pros of this choice were a simplified parser, and avoiding ambiguity in the grammar, but it comes with a major downside of having really poor error messages. A possible future change would be to rewrite the parser using `megaparsec`, and add better error messages. However, to do that, we'll need to stratify the grammar to get rid of left recursion.

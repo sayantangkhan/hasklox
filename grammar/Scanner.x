@@ -194,6 +194,7 @@ data AlexUserState = AlexUserState
     ausCommentNest :: Int
   , ausString :: Maybe ByteString
   , ausStringStart :: Maybe AlexPosn
+  , ausEOFfound :: Bool
   }
 
 alexInitUserState :: AlexUserState
@@ -201,6 +202,7 @@ alexInitUserState = AlexUserState {
     ausCommentNest = 0
   , ausString = Nothing
   , ausStringStart = Nothing
+  , ausEOFfound = False
   }
 
 getAus :: Alex AlexUserState
@@ -323,6 +325,7 @@ alexEOF = do
     when (isJust stringBuffer) $
       alexError "Error: unclosed string"
     (pos, _, _, _) <- alexGetInput
+    modifyAus $ \s -> s{ausEOFfound = True}
     return $ RangedToken Eof (Range pos pos)
 
 scanMany :: ByteString -> Either String [RangedToken]

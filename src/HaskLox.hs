@@ -32,7 +32,7 @@ run :: B.ByteString -> Environment (Expression Range) -> IO ()
 run input environment = do
   let parseResult = runAlex (fromStrict input) parseLox
   case parseResult of
-    Left errorMessage -> putStrLn errorMessage
+    Left (_, errorMessage) -> putStrLn errorMessage
     Right parsed -> do
       runRes <- runInterpreter environment (evalProgram parsed)
       case runRes of

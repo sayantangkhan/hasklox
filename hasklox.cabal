@@ -20,7 +20,6 @@ build-type:     Simple
 extra-source-files:
     README.md
     CHANGELOG.md
-    src/HaskLox/Scanner.x
     src/HaskLox/Parser.y
 
 source-repository head
