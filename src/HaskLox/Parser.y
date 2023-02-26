@@ -67,6 +67,8 @@ while { Scan.RangedToken Scan.While _ }
 ';' { Scan.RangedToken Scan.Semicolon _ }
 
 %left '=' -- Assignment is the lowest precedence expression form
+%left or
+%left and 
 %left '==' '!='
 %left '>' '<' '<=' '>='
 %left '+' '-'
@@ -126,6 +128,8 @@ expression :: { AST.Expression Scan.Range }
   | grouping { $1 }
   | identifierName { AST.Identifier (fst $1) (snd $1) }
   | identifierAssignment { $1 }
+  | expression or expression { AST.LogicalOr (AST.info $1 <-> AST.info $3) $1 $3 }
+  | expression and expression { AST.LogicalAnd (AST.info $1 <-> AST.info $3) $1 $3 }
 
 identifierName :: { (Scan.Range, ByteString) }
   : identifier { unTok $1 (\range -> \token -> (range, (fromJust $ Scan.extractIdentifier token)))}

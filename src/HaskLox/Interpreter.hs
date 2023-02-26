@@ -103,6 +103,24 @@ evalExpression = \case
     if isPresent
       then liftIO (modifyIdentifier name (const (Just evaledExpression)) environment) >> return evaledExpression
       else throwError $ ValueNotFoundError metadata ("Variable " <> (toStrict . decodeUtf8) name <> " not found in scope.")
+  AST.LogicalAnd _ exp1 exp2 -> do
+    exp1Evaled <- evalExpression exp1
+    case exp1Evaled of
+      AST.LiteralExp _ (AST.LoxFalse _) -> do
+        return exp1Evaled
+      AST.LiteralExp _ (AST.Nil _) -> do
+        return exp1Evaled
+      _ -> do
+        evalExpression exp2
+  AST.LogicalOr _ exp1 exp2 -> do
+    exp1Evaled <- evalExpression exp1
+    case exp1Evaled of
+      AST.LiteralExp _ (AST.LoxFalse _) -> do
+        evalExpression exp2
+      AST.LiteralExp _ (AST.Nil _) -> do
+        evalExpression exp2
+      _ -> do
+        return exp1Evaled
 
 applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
 applyUnaryOp AST.Neg = \case

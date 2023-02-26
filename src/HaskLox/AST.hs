@@ -88,6 +88,8 @@ data Expression a
   | Binary a BinaryOp (Expression a) (Expression a)
   | Identifier a ByteString
   | IdentifierAssignment a ByteString (Expression a)
+  | LogicalOr a (Expression a) (Expression a)
+  | LogicalAnd a (Expression a) (Expression a)
 
 -- The show instance for this datatype is defined later
 
@@ -140,6 +142,26 @@ prettyPrintWithOffset (IdentifierAssignment _ name expression) offset =
     ++ unpack name
     ++ " = \n"
     ++ prettyPrintWithOffset expression (offset + 2)
+prettyPrintWithOffset (LogicalAnd range exp1 exp2) offset =
+  concat
+    (replicate offset " ")
+    ++ "AND"
+    ++ " "
+    ++ show range
+    ++ "\n"
+    ++ prettyPrintWithOffset exp1 (offset + 2)
+    ++ "\n"
+    ++ prettyPrintWithOffset exp2 (offset + 2)
+prettyPrintWithOffset (LogicalOr range exp1 exp2) offset =
+  concat
+    (replicate offset " ")
+    ++ "OR"
+    ++ " "
+    ++ show range
+    ++ "\n"
+    ++ prettyPrintWithOffset exp1 (offset + 2)
+    ++ "\n"
+    ++ prettyPrintWithOffset exp2 (offset + 2)
 
 ndPrettyPrintWithOffset :: Expression a -> Int -> String
 ndPrettyPrintWithOffset (LiteralExp _ literal) offset =
@@ -165,6 +187,22 @@ ndPrettyPrintWithOffset (IdentifierAssignment _ name expression) offset =
     ++ unpack name
     ++ " = \n"
     ++ ndPrettyPrintWithOffset expression (offset + 2)
+ndPrettyPrintWithOffset (LogicalAnd _ exp1 exp2) offset =
+  concat
+    (replicate offset " ")
+    ++ "AND"
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp1 (offset + 2)
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp2 (offset + 2)
+ndPrettyPrintWithOffset (LogicalOr _ exp1 exp2) offset =
+  concat
+    (replicate offset " ")
+    ++ "OR"
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp1 (offset + 2)
+    ++ "\n"
+    ++ ndPrettyPrintWithOffset exp2 (offset + 2)
 
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
@@ -178,6 +216,8 @@ instance HasMetadata Expression where
   info (Binary a _ _ _) = a
   info (Identifier a _) = a
   info (IdentifierAssignment a _ _) = a
+  info (LogicalAnd a _ _) = a
+  info (LogicalOr a _ _) = a
 
 extendOuterMetadata :: a -> Expression a -> Expression a
 extendOuterMetadata f (LiteralExp _ b) = LiteralExp f b
@@ -185,3 +225,5 @@ extendOuterMetadata f (Unary _ b c) = Unary f b c
 extendOuterMetadata f (Binary _ b c d) = Binary f b c d
 extendOuterMetadata f (Identifier _ b) = Identifier f b
 extendOuterMetadata f (IdentifierAssignment _ b c) = IdentifierAssignment f b c
+extendOuterMetadata f (LogicalAnd _ c d) = LogicalAnd f c d
+extendOuterMetadata f (LogicalOr _ c d) = LogicalOr f c d
