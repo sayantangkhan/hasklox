@@ -92,6 +92,14 @@ varDeclaration :: { AST.Declaration Scan.Range }
 statement :: { AST.Statement Scan.Range }
   : exprStmt { $1 }
   | printStmt { $1 }
+  | block { $1 }
+
+block :: { AST.Statement Scan.Range }
+  : '{' blockInner '}' ';' { AST.Block $2 }
+
+blockInner :: { [AST.Declaration Scan.Range] }
+  : {- empty -} { [] }
+  | declaration blockInner { $1 : $2 } -- TODO: Figure out whether the reversal is necessary
 
 printStmt :: { AST.Statement Scan.Range }
   : print expression ';' { AST.PrintStmt $2 }

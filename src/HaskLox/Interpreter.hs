@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import HaskLox.AST qualified as AST
-import HaskLox.Environment (Environment, addIdentifier, identifierIsPresent, lookupIdentifier, modifyIdentifier)
+import HaskLox.Environment (Environment, addIdentifier, enterScope, exitScope, identifierIsPresent, lookupIdentifier, modifyIdentifier)
 
 data EvalError m
   = TypeError m T.Text
@@ -54,6 +54,12 @@ evalStatement = \case
   AST.PrintStmt expression -> do
     parsedExpression <- evalExpression expression
     liftIO $ putStrLn $ AST.ndShow parsedExpression
+    return ()
+  AST.Block declarations -> do
+    environment <- ask
+    liftIO $ enterScope environment
+    evalProgram declarations
+    liftIO $ exitScope environment
     return ()
 
 evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)

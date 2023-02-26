@@ -94,6 +94,7 @@ data Expression a
 data Statement a
   = ExprStmt (Expression a)
   | PrintStmt (Expression a)
+  | Block [Declaration a]
   deriving (Show)
 
 data Declaration a

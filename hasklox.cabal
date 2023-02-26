@@ -34,6 +34,7 @@ library
       HaskLox.Environment
       HaskLox.Interpreter
       HaskLox.Parser
+      HaskLox.REPL
       HaskLox.Scanner
   other-modules:
       Paths_hasklox
