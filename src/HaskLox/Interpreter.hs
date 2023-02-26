@@ -6,6 +6,7 @@ module HaskLox.Interpreter (evalProgram, runInterpreter) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Data.Foldable (forM_)
 import Data.Text qualified as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (decodeUtf8)
@@ -61,6 +62,19 @@ evalStatement = \case
     evalProgram declarations
     liftIO $ exitScope environment
     return ()
+  AST.IfStatement ifStatement -> do
+    -- Evaluate the condition to see if it's Truthy, i.e. not null or False
+    evaledCondition <- evalExpression $ AST.ifStatementCondition ifStatement
+    case evaledCondition of
+      AST.LiteralExp _ (AST.LoxFalse _) -> do
+        let elseCondition = AST.ifStatementElse ifStatement
+        Data.Foldable.forM_ elseCondition evalStatement
+      AST.LiteralExp _ (AST.Nil _) -> do
+        let elseCondition = AST.ifStatementElse ifStatement
+        Data.Foldable.forM_ elseCondition evalStatement
+      _ -> do
+        let thenCondition = AST.ifStatementThen ifStatement
+        evalStatement thenCondition
 
 evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
 evalExpression = \case

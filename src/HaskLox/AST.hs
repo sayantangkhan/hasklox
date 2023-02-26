@@ -1,4 +1,4 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), extendOuterMetadata, nonMetadataEq, ndShow) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), extendOuterMetadata, nonMetadataEq, ndShow) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
@@ -94,7 +94,15 @@ data Expression a
 data Statement a
   = ExprStmt (Expression a)
   | PrintStmt (Expression a)
+  | IfStatement (IfStatement a)
   | Block [Declaration a]
+  deriving (Show)
+
+data IfStatement a = IfStatementCons
+  { ifStatementCondition :: Expression a,
+    ifStatementThen :: Statement a,
+    ifStatementElse :: Maybe (Statement a)
+  }
   deriving (Show)
 
 data Declaration a

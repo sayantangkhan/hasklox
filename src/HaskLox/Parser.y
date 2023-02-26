@@ -90,9 +90,21 @@ varDeclaration :: { AST.Declaration Scan.Range }
   | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (fst $2)) (snd $2) Nothing }
 
 statement :: { AST.Statement Scan.Range }
+  : openIf { $1 }
+  | closedIf { $1 }
+
+nonIfStatement :: { AST.Statement Scan.Range }
   : exprStmt { $1 }
   | printStmt { $1 }
   | block { $1 }
+
+openIf :: { AST.Statement Scan.Range }
+  : if '(' expression ')' statement { AST.IfStatement $ AST.IfStatementCons $3 $5 Nothing  }
+  | if '(' expression ')' closedIf else openIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
+
+closedIf :: { AST.Statement Scan.Range }
+  : nonIfStatement { $1 }
+  | if '(' expression ')' closedIf else closedIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
 
 block :: { AST.Statement Scan.Range }
   : '{' blockInner '}' ';' { AST.Block $2 }
