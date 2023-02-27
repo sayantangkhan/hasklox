@@ -61,11 +61,7 @@ evalStatement = \case
     liftIO $ putStrLn $ AST.ndShow parsedExpression
     return ()
   AST.Block declarations -> do
-    environment <- ask
-    liftIO $ enterScope environment
-    evalDeclarations declarations
-    liftIO $ exitScope environment
-    return ()
+    inBlock (evalDeclarations declarations)
   AST.IfStatement ifStatement -> do
     -- Evaluate the condition to see if it's Truthy, i.e. not null or False
     -- TODO: Refactor this to use the isTruthy function
@@ -92,41 +88,34 @@ evalWhile condition loop = do
 
 evalFor :: AST.ForStatement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalFor (AST.ForStatement possibleInit possibleCond possibleInc body) = do
-  environment <- ask
-  liftIO $ enterScope environment
-  case possibleInit of
-    Nothing -> return ()
-    Just (AST.ForVarDeclr metadata name possibleValue) -> do
-      let varDeclaration = AST.VarDeclaration metadata name possibleValue
-      evalDeclaration varDeclaration
-    Just (AST.ForInitExpression expression) -> do
-      _ <- evalExpression expression
-      return ()
-  evalForBody possibleCond possibleInc body
-  liftIO $ exitScope environment
-  return ()
+  inBlock $ do
+    case possibleInit of
+      Nothing -> return ()
+      Just (AST.ForVarDeclr metadata name possibleValue) -> do
+        let varDeclaration = AST.VarDeclaration metadata name possibleValue
+        evalDeclaration varDeclaration
+      Just (AST.ForInitExpression expression) -> do
+        _ <- evalExpression expression
+        return ()
+    evalForBody possibleCond possibleInc body
   where
     evalForBody :: Maybe (AST.Expression m) -> Maybe (AST.Expression m) -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
     evalForBody c i b = do
-      env <- ask
+      -- env <- ask
       case c of
         Nothing -> do
-          liftIO $ enterScope env
-          liftIO $ enterScope env
-          evalStatement b
-          liftIO $ exitScope env
-          forM_ i evalExpression
-          liftIO $ exitScope env
+          inBlock $ do
+            inBlock $ do
+              evalStatement b
+            forM_ i evalExpression
           evalForBody c i b
         Just expression -> do
           (conditionIsTrue, _) <- isTruthy expression
           when conditionIsTrue $ do
-            liftIO $ enterScope env
-            liftIO $ enterScope env
-            evalStatement b
-            liftIO $ exitScope env
-            forM_ i evalExpression
-            liftIO $ exitScope env
+            inBlock $ do
+              inBlock $ do
+                evalStatement b
+              forM_ i evalExpression
             evalForBody c i b
 
 evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
@@ -299,3 +288,11 @@ applyBinaryOp AST.Divide metadata leftArg rightArg = case (leftArg, rightArg) of
 negateLoxNum :: AST.LoxNum -> AST.LoxNum
 negateLoxNum (AST.LoxInt x) = AST.LoxInt $ -1 * x
 negateLoxNum (AST.LoxFloat x) = AST.LoxFloat $ -1 * x
+
+inBlock :: InterpreterState (AST.Expression m) (EvalError m) a -> InterpreterState (AST.Expression m) (EvalError m) a
+inBlock monadicAction = do
+  environment <- ask
+  liftIO $ enterScope environment
+  resultOfAction <- monadicAction
+  liftIO $ exitScope environment
+  return resultOfAction
