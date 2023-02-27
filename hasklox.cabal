@@ -30,6 +30,7 @@ library
   exposed-modules:
       HaskLox
       HaskLox.AST
+      HaskLox.AST.Desugaring
       HaskLox.Environment
       HaskLox.Interpreter
       HaskLox.Parser

@@ -80,7 +80,8 @@ evalStatement = \case
       _ -> do
         let thenCondition = AST.ifStatementThen ifStatement
         evalStatement thenCondition
-  AST.While condition loop -> evalWhile condition loop
+  AST.While (AST.WhileStatement condition loop) -> evalWhile condition loop
+  AST.For forStatement -> evalFor forStatement
 
 evalWhile :: AST.Expression m -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalWhile condition loop = do
@@ -88,6 +89,45 @@ evalWhile condition loop = do
   Control.Monad.when conditionIsTrue $ do
     evalStatement loop
     evalWhile condition loop
+
+evalFor :: AST.ForStatement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalFor (AST.ForStatement possibleInit possibleCond possibleInc body) = do
+  environment <- ask
+  liftIO $ enterScope environment
+  case possibleInit of
+    Nothing -> return ()
+    Just (AST.ForVarDeclr metadata name possibleValue) -> do
+      let varDeclaration = AST.VarDeclaration metadata name possibleValue
+      evalDeclaration varDeclaration
+    Just (AST.ForInitExpression expression) -> do
+      _ <- evalExpression expression
+      return ()
+  evalForBody possibleCond possibleInc body
+  liftIO $ exitScope environment
+  return ()
+  where
+    evalForBody :: Maybe (AST.Expression m) -> Maybe (AST.Expression m) -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+    evalForBody c i b = do
+      env <- ask
+      case c of
+        Nothing -> do
+          liftIO $ enterScope env
+          liftIO $ enterScope env
+          evalStatement b
+          liftIO $ exitScope env
+          forM_ i evalExpression
+          liftIO $ exitScope env
+          evalForBody c i b
+        Just expression -> do
+          (conditionIsTrue, _) <- isTruthy expression
+          when conditionIsTrue $ do
+            liftIO $ enterScope env
+            liftIO $ enterScope env
+            evalStatement b
+            liftIO $ exitScope env
+            forM_ i evalExpression
+            liftIO $ exitScope env
+            evalForBody c i b
 
 evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
 evalExpression = \case

@@ -1,4 +1,4 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), extendOuterMetadata, nonMetadataEq, ndShow, Program (..)) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), ForStatement (..), ForStatementInit (..), While (..), extendOuterMetadata, nonMetadataEq, ndShow, Program (..)) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
@@ -16,7 +16,8 @@ data Statement a
   | PrintStmt (Expression a)
   | IfStatement (IfStatement a)
   | Block [Declaration a]
-  | While (Expression a) (Statement a)
+  | While (While a)
+  | For (ForStatement a)
   deriving (Show)
 
 data IfStatement a = IfStatementCons
@@ -26,9 +27,24 @@ data IfStatement a = IfStatementCons
   }
   deriving (Show)
 
--- data ForStatementVarDeclr a = ForStatementVarDeclr {
---   ForVarDeclr a ByteString (Maybe (Expression a))
--- }
+data While a = WhileStatement
+  { whileCond :: Expression a,
+    whileBody :: Statement a
+  }
+  deriving (Show)
+
+data ForStatement a = ForStatement
+  { fsInit :: Maybe (ForStatementInit a),
+    fsCond :: Maybe (Expression a),
+    fsInc :: Maybe (Expression a),
+    fsBody :: Statement a
+  }
+  deriving (Show)
+
+data ForStatementInit a
+  = ForVarDeclr a ByteString (Maybe (Expression a))
+  | ForInitExpression (Expression a)
+  deriving (Show)
 
 data Expression a
   = LiteralExp a (Literal a)
@@ -226,6 +242,11 @@ instance HasMetadata Expression where
   info (IdentifierAssignment a _ _) = a
   info (LogicalAnd a _ _) = a
   info (LogicalOr a _ _) = a
+
+-- instance HasMetadata Statement where
+--   info (ExprStmt expression) = info expression
+--   info (PrintStmt expression) = info expression
+--   info (IfStatement ifStmt) = info $ ifStatementCondition ifStmt
 
 extendOuterMetadata :: a -> Expression a -> Expression a
 extendOuterMetadata f (LiteralExp _ b) = LiteralExp f b

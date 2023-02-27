@@ -104,12 +104,22 @@ nonIfStatement :: { AST.Statement Scan.Range }
 openIf :: { AST.Statement Scan.Range }
   : if '(' expression ')' statement { AST.IfStatement $ AST.IfStatementCons $3 $5 Nothing  }
   | if '(' expression ')' closedIf else openIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
-  | while '(' expression ')' openIf { AST.While $3 $5 }
+  | while '(' expression ')' openIf { AST.While (AST.WhileStatement $3 $5) }
+  | openFor { AST.For $1 }
 
 closedIf :: { AST.Statement Scan.Range }
   : nonIfStatement { $1 }
   | if '(' expression ')' closedIf else closedIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
-  | while '(' expression ')' closedIf { AST.While $3 $5 }
+  | while '(' expression ')' closedIf { AST.While (AST.WhileStatement $3 $5) }
+  | closedFor { AST.For $1 }
+
+closedFor :: { AST.ForStatement Scan.Range }
+  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' closedIf { forConstructorVarDeclr $3 $4 $6 $8 }
+  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' closedIf { forConstructorExpression $3 $5 $7 $9  }
+
+openFor :: { AST.ForStatement Scan.Range }
+  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' openIf { forConstructorVarDeclr $3 $4 $6 $8  }
+  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' openIf { forConstructorExpression $3 $5 $7 $9  }
 
 block :: { AST.Statement Scan.Range }
   : '{' blockInner '}' { AST.Block $2 }
@@ -133,6 +143,10 @@ expression :: { AST.Expression Scan.Range }
   | identifierAssignment { $1 }
   | expression or expression { AST.LogicalOr (AST.info $1 <-> AST.info $3) $1 $3 }
   | expression and expression { AST.LogicalAnd (AST.info $1 <-> AST.info $3) $1 $3 }
+
+maybeExpression :: { Maybe (AST.Expression Scan.Range) }
+  : expression { Just $1 }
+  | {- empty -} { Nothing }
 
 identifierName :: { (Scan.Range, ByteString) }
   : identifier { unTok $1 (\range -> \token -> (range, (fromJust $ Scan.extractIdentifier token)))}
@@ -182,4 +196,18 @@ unTok (Scan.RangedToken token range) f = f range token
 -- | Does not check if end of first range equals start of second range by design
 (<->) :: Scan.Range -> Scan.Range -> Scan.Range
 (Scan.Range a _) <-> (Scan.Range _ d) = Scan.Range a d
+
+-- Utility functions for converting between AST nodes
+
+-- This function panics if the declaration is not a variable declaration
+varDeclrToForInit :: AST.Declaration a -> AST.ForStatementInit a
+varDeclrToForInit (AST.VarDeclaration m name possibleValue) = AST.ForVarDeclr m name possibleValue
+varDeclrToForInit _ = error "Tried to read an inner statement when expecting a variable declaration"
+
+forConstructorVarDeclr :: AST.Declaration a -> Maybe (AST.Expression a) -> Maybe (AST.Expression a) -> AST.Statement a -> AST.ForStatement a
+forConstructorVarDeclr variableDeclaration possibleCondition possibleIncrement body = AST.ForStatement (Just (varDeclrToForInit variableDeclaration)) possibleCondition possibleIncrement body
+
+forConstructorExpression :: Maybe (AST.Expression a) -> Maybe (AST.Expression a) -> Maybe (AST.Expression a) -> AST.Statement a -> AST.ForStatement a
+forConstructorExpression possibleInitializer possibleCondition possibleIncrement body = AST.ForStatement (AST.ForInitExpression <$> possibleInitializer) possibleCondition possibleIncrement body
+
 }
