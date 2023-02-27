@@ -1,13 +1,63 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), extendOuterMetadata, nonMetadataEq, ndShow) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), extendOuterMetadata, nonMetadataEq, ndShow, Program (..)) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
 
-class HasMetadata n where
-  info :: n m -> m
+newtype Program a = Program [Declaration a]
+  deriving (Show)
 
-class NonDebugShow n where
-  ndShow :: n -> String
+data Declaration a
+  = VarDeclaration a ByteString (Maybe (Expression a))
+  | InnerStatement (Statement a)
+  deriving (Show)
+
+data Statement a
+  = ExprStmt (Expression a)
+  | PrintStmt (Expression a)
+  | IfStatement (IfStatement a)
+  | Block [Declaration a]
+  deriving (Show)
+
+data IfStatement a = IfStatementCons
+  { ifStatementCondition :: Expression a,
+    ifStatementThen :: Statement a,
+    ifStatementElse :: Maybe (Statement a)
+  }
+  deriving (Show)
+
+data Expression a
+  = LiteralExp a (Literal a)
+  | Unary a UnaryOp (Expression a)
+  | Binary a BinaryOp (Expression a) (Expression a)
+  | Identifier a ByteString
+  | IdentifierAssignment a ByteString (Expression a)
+  | LogicalOr a (Expression a) (Expression a)
+  | LogicalAnd a (Expression a) (Expression a)
+
+data Literal a
+  = Number a LoxNum
+  | LoxString a ByteString
+  | LoxTrue a
+  | LoxFalse a
+  | Nil a
+
+data UnaryOp
+  = Neg -- -
+  | Exclamation -- !
+  deriving (Eq, Show)
+
+data BinaryOp
+  = IsEqual -- ==
+  | NotEqual -- !=
+  | Less
+  | LessEqual
+  | Greater
+  | GreaterEqual
+  | Plus
+  | Minus
+  | Mult
+  | Divide
+  deriving (Eq, Show)
 
 data LoxNum
   = LoxInt Int
@@ -20,12 +70,11 @@ instance Ord LoxNum where
   LoxFloat x <= LoxInt y = x <= fromIntegral y
   LoxInt x <= LoxFloat y = fromIntegral x <= y
 
-data Literal a
-  = Number a LoxNum
-  | LoxString a ByteString
-  | LoxTrue a
-  | LoxFalse a
-  | Nil a
+class HasMetadata n where
+  info :: n m -> m
+
+class NonDebugShow n where
+  ndShow :: n -> String
 
 nonMetadataEq :: Literal a -> Literal a -> Bool
 nonMetadataEq (Number _ x) (Number _ y) = x == y
@@ -58,59 +107,13 @@ instance HasMetadata Literal where
   info (LoxFalse a) = a
   info (Nil a) = a
 
-data UnaryOp
-  = Neg -- -
-  | Exclamation -- !
-  deriving (Eq, Show)
-
 instance NonDebugShow UnaryOp where
   ndShow = show
-
-data BinaryOp
-  = IsEqual -- ==
-  | NotEqual -- !=
-  | Less
-  | LessEqual
-  | Greater
-  | GreaterEqual
-  | Plus
-  | Minus
-  | Mult
-  | Divide
-  deriving (Eq, Show)
 
 instance NonDebugShow BinaryOp where
   ndShow = show
 
-data Expression a
-  = LiteralExp a (Literal a)
-  | Unary a UnaryOp (Expression a)
-  | Binary a BinaryOp (Expression a) (Expression a)
-  | Identifier a ByteString
-  | IdentifierAssignment a ByteString (Expression a)
-  | LogicalOr a (Expression a) (Expression a)
-  | LogicalAnd a (Expression a) (Expression a)
-
 -- The show instance for this datatype is defined later
-
-data Statement a
-  = ExprStmt (Expression a)
-  | PrintStmt (Expression a)
-  | IfStatement (IfStatement a)
-  | Block [Declaration a]
-  deriving (Show)
-
-data IfStatement a = IfStatementCons
-  { ifStatementCondition :: Expression a,
-    ifStatementThen :: Statement a,
-    ifStatementElse :: Maybe (Statement a)
-  }
-  deriving (Show)
-
-data Declaration a
-  = VarDeclaration a ByteString (Maybe (Expression a))
-  | InnerStatement (Statement a)
-  deriving (Show)
 
 prettyPrintWithOffset :: (Show a) => Expression a -> Int -> String
 prettyPrintWithOffset (LiteralExp _ literal) offset =

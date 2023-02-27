@@ -33,8 +33,11 @@ newtype InterpreterState d e a = InterpreterState {runInterpreterState :: Reader
 runInterpreter :: Environment d -> InterpreterState d e a -> IO (Either e a)
 runInterpreter environment interpreter = runExceptT (runReaderT (runInterpreterState interpreter) environment)
 
-evalProgram :: [AST.Declaration m] -> InterpreterState (AST.Expression m) (EvalError m) ()
-evalProgram = mapM_ evalDeclaration
+evalProgram :: AST.Program m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalProgram (AST.Program declarations) = evalDeclarations declarations
+
+evalDeclarations :: [AST.Declaration m] -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalDeclarations = mapM_ evalDeclaration
 
 evalDeclaration :: AST.Declaration m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalDeclaration = \case
@@ -59,7 +62,7 @@ evalStatement = \case
   AST.Block declarations -> do
     environment <- ask
     liftIO $ enterScope environment
-    evalProgram declarations
+    evalDeclarations declarations
     liftIO $ exitScope environment
     return ()
   AST.IfStatement ifStatement -> do

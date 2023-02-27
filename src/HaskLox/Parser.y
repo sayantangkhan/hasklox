@@ -76,8 +76,8 @@ while { Scan.RangedToken Scan.While _ }
 %right '!' NEG
 %%
 
-program :: { [AST.Declaration Scan.Range] }
-  : reversedProgram { reverse $1 }
+program :: { AST.Program Scan.Range }
+  : reversedProgram { AST.Program $ reverse $1 }
 
 reversedProgram :: { [AST.Declaration Scan.Range] }
   : {- empty -} { [] }
