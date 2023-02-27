@@ -99,17 +99,20 @@ nonIfStatement :: { AST.Statement Scan.Range }
   : exprStmt { $1 }
   | printStmt { $1 }
   | block { $1 }
+  -- | whileStatement { $1 }
 
 openIf :: { AST.Statement Scan.Range }
   : if '(' expression ')' statement { AST.IfStatement $ AST.IfStatementCons $3 $5 Nothing  }
   | if '(' expression ')' closedIf else openIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
+  | while '(' expression ')' openIf { AST.While $3 $5 }
 
 closedIf :: { AST.Statement Scan.Range }
   : nonIfStatement { $1 }
   | if '(' expression ')' closedIf else closedIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
+  | while '(' expression ')' closedIf { AST.While $3 $5 }
 
 block :: { AST.Statement Scan.Range }
-  : '{' blockInner '}' ';' { AST.Block $2 }
+  : '{' blockInner '}' { AST.Block $2 }
 
 blockInner :: { [AST.Declaration Scan.Range] }
   : {- empty -} { [] }

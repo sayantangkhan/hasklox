@@ -4,6 +4,7 @@
 
 module HaskLox.Interpreter (evalProgram, runInterpreter) where
 
+import Control.Monad (when)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Foldable (forM_)
@@ -67,6 +68,7 @@ evalStatement = \case
     return ()
   AST.IfStatement ifStatement -> do
     -- Evaluate the condition to see if it's Truthy, i.e. not null or False
+    -- TODO: Refactor this to use the isTruthy function
     evaledCondition <- evalExpression $ AST.ifStatementCondition ifStatement
     case evaledCondition of
       AST.LiteralExp _ (AST.LoxFalse _) -> do
@@ -78,6 +80,14 @@ evalStatement = \case
       _ -> do
         let thenCondition = AST.ifStatementThen ifStatement
         evalStatement thenCondition
+  AST.While condition loop -> evalWhile condition loop
+
+evalWhile :: AST.Expression m -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalWhile condition loop = do
+  (conditionIsTrue, _) <- isTruthy condition
+  Control.Monad.when conditionIsTrue $ do
+    evalStatement loop
+    evalWhile condition loop
 
 evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
 evalExpression = \case
@@ -107,23 +117,26 @@ evalExpression = \case
       then liftIO (modifyIdentifier name (const (Just evaledExpression)) environment) >> return evaledExpression
       else throwError $ ValueNotFoundError metadata ("Variable " <> (toStrict . decodeUtf8) name <> " not found in scope.")
   AST.LogicalAnd _ exp1 exp2 -> do
-    exp1Evaled <- evalExpression exp1
-    case exp1Evaled of
-      AST.LiteralExp _ (AST.LoxFalse _) -> do
-        return exp1Evaled
-      AST.LiteralExp _ (AST.Nil _) -> do
-        return exp1Evaled
-      _ -> do
-        evalExpression exp2
+    (exp1IsTrue, exp1Evaled) <- isTruthy exp1
+    if exp1IsTrue
+      then evalExpression exp2
+      else return exp1Evaled
   AST.LogicalOr _ exp1 exp2 -> do
-    exp1Evaled <- evalExpression exp1
-    case exp1Evaled of
-      AST.LiteralExp _ (AST.LoxFalse _) -> do
-        evalExpression exp2
-      AST.LiteralExp _ (AST.Nil _) -> do
-        evalExpression exp2
-      _ -> do
-        return exp1Evaled
+    (exp1IsTrue, exp1Evaled) <- isTruthy exp1
+    if exp1IsTrue
+      then return exp1Evaled
+      else evalExpression exp2
+
+isTruthy :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (Bool, AST.Expression m)
+isTruthy expression = do
+  expEvaled <- evalExpression expression
+  case expEvaled of
+    AST.LiteralExp _ (AST.LoxFalse _) -> do
+      return (False, expEvaled)
+    AST.LiteralExp _ (AST.Nil _) -> do
+      return (False, expEvaled)
+    _ -> do
+      return (True, expEvaled)
 
 applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
 applyUnaryOp AST.Neg = \case

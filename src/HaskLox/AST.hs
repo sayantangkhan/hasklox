@@ -16,6 +16,7 @@ data Statement a
   | PrintStmt (Expression a)
   | IfStatement (IfStatement a)
   | Block [Declaration a]
+  | While (Expression a) (Statement a)
   deriving (Show)
 
 data IfStatement a = IfStatementCons
@@ -24,6 +25,10 @@ data IfStatement a = IfStatementCons
     ifStatementElse :: Maybe (Statement a)
   }
   deriving (Show)
+
+-- data ForStatementVarDeclr a = ForStatementVarDeclr {
+--   ForVarDeclr a ByteString (Maybe (Expression a))
+-- }
 
 data Expression a
   = LiteralExp a (Literal a)
