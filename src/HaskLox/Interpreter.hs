@@ -53,7 +53,7 @@ evalDeclaration = \case
 
 evalStatement :: AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalStatement = \case
-  AST.ExprStmt expression -> do
+  AST.ExprStmt _ expression -> do
     _ <- evalExpression expression
     return ()
   AST.PrintStmt expression -> do

@@ -1,4 +1,5 @@
 {
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveFoldable #-}
 module HaskLox.Parser
   ( parseLox
@@ -88,8 +89,8 @@ declaration :: { AST.Declaration Scan.Range }
   | statement { AST.InnerStatement $1 }
 
 varDeclaration :: { AST.Declaration Scan.Range }
-  : var identifierName '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (AST.info $4)) (snd $2) (Just $4) }
-  | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <-> (fst $2)) (snd $2) Nothing }
+  : var identifierName '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (AST.info $4)) (snd $2) (Just $4) }
+  | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (fst $2)) (snd $2) Nothing }
 
 statement :: { AST.Statement Scan.Range }
   : openIf { $1 }
@@ -132,7 +133,7 @@ printStmt :: { AST.Statement Scan.Range }
   : print expression ';' { AST.PrintStmt $2 }
 
 exprStmt :: { AST.Statement Scan.Range }
-  : expression ';' { AST.ExprStmt $1 }
+  : expression ';' { AST.ExprStmt (AST.info $1 <> Scan.rtRange $2) $1 }
 
 expression :: { AST.Expression Scan.Range }
   : literal { AST.LiteralExp (AST.info $1) $1 }
@@ -141,8 +142,8 @@ expression :: { AST.Expression Scan.Range }
   | grouping { $1 }
   | identifierName { AST.Identifier (fst $1) (snd $1) }
   | identifierAssignment { $1 }
-  | expression or expression { AST.LogicalOr (AST.info $1 <-> AST.info $3) $1 $3 }
-  | expression and expression { AST.LogicalAnd (AST.info $1 <-> AST.info $3) $1 $3 }
+  | expression or expression { AST.LogicalOr (AST.info $1 <> AST.info $3) $1 $3 }
+  | expression and expression { AST.LogicalAnd (AST.info $1 <> AST.info $3) $1 $3 }
 
 maybeExpression :: { Maybe (AST.Expression Scan.Range) }
   : expression { Just $1 }
@@ -152,7 +153,7 @@ identifierName :: { (Scan.Range, ByteString) }
   : identifier { unTok $1 (\range -> \token -> (range, (fromJust $ Scan.extractIdentifier token)))}
 
 identifierAssignment :: { AST.Expression Scan.Range }
-  : identifierName '=' expression { AST.IdentifierAssignment ((fst $1) <-> (AST.info $3)) (snd $1) $3 }
+  : identifierName '=' expression { AST.IdentifierAssignment ((fst $1) <> (AST.info $3)) (snd $1) $3 }
 
 literal :: { AST.Literal Scan.Range }
   : int { unTok $1 (\range -> \token -> AST.Number range (AST.LoxInt (fromJust $ Scan.extractInt token))) }
@@ -163,23 +164,23 @@ literal :: { AST.Literal Scan.Range }
   | nil { unTok $1 (\range -> \_ -> AST.Nil range) }
 
 unary :: { AST.Expression Scan.Range }
-  : '-' expression  %prec NEG{ AST.Unary ((Scan.rtRange $1) <-> (AST.info $2)) AST.Neg $2 }
-  | '!' expression { AST.Unary ((Scan.rtRange $1) <-> (AST.info $2)) AST.Exclamation $2 }
+  : '-' expression  %prec NEG{ AST.Unary ((Scan.rtRange $1) <> (AST.info $2)) AST.Neg $2 }
+  | '!' expression { AST.Unary ((Scan.rtRange $1) <> (AST.info $2)) AST.Exclamation $2 }
 
 binary :: { AST.Expression Scan.Range }
-  : expression '==' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.IsEqual $1 $3 }
-  | expression '!=' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.NotEqual $1 $3 }
-  | expression '<' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Less $1 $3 }
-  | expression '<=' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.LessEqual $1 $3 }
-  | expression '>' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Greater $1 $3 }
-  | expression '>=' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.GreaterEqual $1 $3 }
-  | expression '+' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Plus $1 $3 }
-  | expression '-' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Minus $1 $3 }
-  | expression '*' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Mult $1 $3 }
-  | expression '/' expression { AST.Binary ((AST.info $1) <-> (AST.info $3)) AST.Divide $1 $3 }
+  : expression '==' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.IsEqual $1 $3 }
+  | expression '!=' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.NotEqual $1 $3 }
+  | expression '<' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Less $1 $3 }
+  | expression '<=' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.LessEqual $1 $3 }
+  | expression '>' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Greater $1 $3 }
+  | expression '>=' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.GreaterEqual $1 $3 }
+  | expression '+' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Plus $1 $3 }
+  | expression '-' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Minus $1 $3 }
+  | expression '*' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Mult $1 $3 }
+  | expression '/' expression { AST.Binary ((AST.info $1) <> (AST.info $3)) AST.Divide $1 $3 }
 
 grouping :: { AST.Expression Scan.Range }
-  : '(' expression ')' { AST.extendOuterMetadata ((Scan.rtRange $1) <-> (Scan.rtRange $3)) $2 }
+  : '(' expression ')' { AST.extendOuterMetadata ((Scan.rtRange $1) <> (Scan.rtRange $3)) $2 }
 
 {
 parseError :: Scan.RangedToken -> Scan.Alex a
@@ -193,9 +194,10 @@ lexer = (=<< Scan.alexMonadScan)
 unTok :: Scan.RangedToken -> (Scan.Range -> Scan.TokenType -> a) -> a
 unTok (Scan.RangedToken token range) f = f range token
 
--- | Does not check if end of first range equals start of second range by design
-(<->) :: Scan.Range -> Scan.Range -> Scan.Range
-(Scan.Range a _) <-> (Scan.Range _ d) = Scan.Range a d
+-- | A kinda stupid Semigroup for Scan.Range
+instance Semigroup Scan.Range where
+  (<>) :: Scan.Range -> Scan.Range -> Scan.Range
+  (Scan.Range a _) <> (Scan.Range _ d) = Scan.Range a d
 
 -- Utility functions for converting between AST nodes
 

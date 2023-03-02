@@ -12,6 +12,24 @@ Haskell implementation of the Lox interpreter from 'Crafting Interpreters'.
 - [x] Figure out how to enter and exit scopes in a balanced fashion. (Defined a new function `inBlock`)
 - [x] Set up more pedantic hlints. (Actually, the defaults seem just fine)
 
+### Proper metadata for all AST nodes
+- [x] Literals
+- [x] Identifiers
+- [x] Identifier assignments
+- [x] Unary operations
+- [x] Binary operations
+- [x] Grouping
+- [x] Logical OR
+- [x] Logical AND
+- [x] Expressions
+- [ ] Statements
+- [ ] Expression statement
+- [ ] Print statement
+- [ ] If statement
+- [ ] While statement
+- [ ] For statement
+- [ ] Block
+
 ## Further reading (and possible ideas)
 
 - [Series](https://blog.josephmorag.com/posts/mcc2/) on writing a compiler in Haskell using LLVM. Could use this to make lox a compiled language.

@@ -12,7 +12,7 @@ data Declaration a
   deriving (Show)
 
 data Statement a
-  = ExprStmt (Expression a)
+  = ExprStmt a (Expression a)
   | PrintStmt (Expression a)
   | IfStatement (IfStatement a)
   | Block [Declaration a]
