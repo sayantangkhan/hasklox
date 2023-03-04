@@ -7,60 +7,60 @@ newtype Program a = Program [Declaration a]
   deriving (Show)
 
 data Declaration a
-  = VarDeclaration a ByteString (Maybe (Expression a))
-  | InnerStatement a (Statement a)
+  = VarDeclaration !a !ByteString !(Maybe (Expression a))
+  | InnerStatement !a !(Statement a)
   deriving (Show)
 
 data Statement a
-  = ExprStmt a (Expression a)
-  | PrintStmt a (Expression a)
-  | IfStatement a (IfStatement a)
-  | Block a [Declaration a]
-  | While a (While a)
-  | For a (ForStatement a)
+  = ExprStmt !a !(Expression a)
+  | PrintStmt !a !(Expression a)
+  | IfStatement !a !(IfStatement a)
+  | Block !a [Declaration a]
+  | While !a !(While a)
+  | For !a !(ForStatement a)
   deriving (Show)
 
 data IfStatement a = IfStatementCons
-  { ifStatementCondition :: Expression a,
-    ifStatementThen :: Statement a,
-    ifStatementElse :: Maybe (Statement a)
+  { ifStatementCondition :: !(Expression a),
+    ifStatementThen :: !(Statement a),
+    ifStatementElse :: !(Maybe (Statement a))
   }
   deriving (Show)
 
 data While a = WhileStatement
-  { whileCond :: Expression a,
-    whileBody :: Statement a
+  { whileCond :: !(Expression a),
+    whileBody :: !(Statement a)
   }
   deriving (Show)
 
 data ForStatement a = ForStatement
-  { fsInit :: Maybe (ForStatementInit a),
-    fsCond :: Maybe (Expression a),
-    fsInc :: Maybe (Expression a),
-    fsBody :: Statement a
+  { fsInit :: !(Maybe (ForStatementInit a)),
+    fsCond :: !(Maybe (Expression a)),
+    fsInc :: !(Maybe (Expression a)),
+    fsBody :: !(Statement a)
   }
   deriving (Show)
 
 data ForStatementInit a
-  = ForVarDeclr a ByteString (Maybe (Expression a))
-  | ForInitExpression (Expression a)
+  = ForVarDeclr !a !ByteString !(Maybe (Expression a))
+  | ForInitExpression !(Expression a)
   deriving (Show)
 
 data Expression a
-  = LiteralExp a (Literal a)
-  | Unary a UnaryOp (Expression a)
-  | Binary a BinaryOp (Expression a) (Expression a)
-  | Identifier a ByteString
-  | IdentifierAssignment a ByteString (Expression a)
-  | LogicalOr a (Expression a) (Expression a)
-  | LogicalAnd a (Expression a) (Expression a)
+  = LiteralExp !a !(Literal a)
+  | Unary !a !UnaryOp !(Expression a)
+  | Binary !a !BinaryOp !(Expression a) !(Expression a)
+  | Identifier !a !ByteString
+  | IdentifierAssignment !a !ByteString !(Expression a)
+  | LogicalOr !a !(Expression a) !(Expression a)
+  | LogicalAnd !a !(Expression a) !(Expression a)
 
 data Literal a
-  = Number a LoxNum
-  | LoxString a ByteString
-  | LoxTrue a
-  | LoxFalse a
-  | Nil a
+  = Number !a !LoxNum
+  | LoxString !a !ByteString
+  | LoxTrue !a
+  | LoxFalse !a
+  | Nil !a
 
 data UnaryOp
   = Neg -- -
@@ -81,8 +81,8 @@ data BinaryOp
   deriving (Eq, Show)
 
 data LoxNum
-  = LoxInt Int
-  | LoxFloat Float
+  = LoxInt !Int
+  | LoxFloat !Float
   deriving (Eq, Show)
 
 instance Ord LoxNum where

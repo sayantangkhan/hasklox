@@ -8,7 +8,7 @@ Haskell implementation of the Lox interpreter from 'Crafting Interpreters'.
 - [ ] Set up tests for the code already written.
 - [x] Add some code to benchmark performance as well.
 - [x] Implement proper metadata for all nodes of the AST.
-- [ ] Figure out strictness vs. laziness in the data structures.
+- [x] Figure out strictness vs. laziness in the data structures. (Made all nodes of the AST strict)
 - [x] Figure out how to enter and exit scopes in a balanced fashion. (Defined a new function `inBlock`)
 - [x] Set up more pedantic hlints. (Actually, the defaults seem just fine)
 
