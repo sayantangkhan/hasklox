@@ -49,20 +49,20 @@ evalDeclaration = \case
       Just thunk -> do
         possibleValue <- evalExpression thunk
         liftIO $ addIdentifier name (Just possibleValue) environment
-  AST.InnerStatement statement -> evalStatement statement
+  AST.InnerStatement _ statement -> evalStatement statement
 
 evalStatement :: AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalStatement = \case
   AST.ExprStmt _ expression -> do
     _ <- evalExpression expression
     return ()
-  AST.PrintStmt expression -> do
+  AST.PrintStmt _ expression -> do
     parsedExpression <- evalExpression expression
     liftIO $ putStrLn $ AST.ndShow parsedExpression
     return ()
-  AST.Block declarations -> do
+  AST.Block _ declarations -> do
     inBlock (evalDeclarations declarations)
-  AST.IfStatement ifStatement -> do
+  AST.IfStatement _ ifStatement -> do
     -- Evaluate the condition to see if it's Truthy, i.e. not null or False
     -- TODO: Refactor this to use the isTruthy function
     evaledCondition <- evalExpression $ AST.ifStatementCondition ifStatement
@@ -76,8 +76,8 @@ evalStatement = \case
       _ -> do
         let thenCondition = AST.ifStatementThen ifStatement
         evalStatement thenCondition
-  AST.While (AST.WhileStatement condition loop) -> evalWhile condition loop
-  AST.For forStatement -> evalFor forStatement
+  AST.While _ (AST.WhileStatement condition loop) -> evalWhile condition loop
+  AST.For _ forStatement -> evalFor forStatement
 
 evalWhile :: AST.Expression m -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
 evalWhile condition loop = do

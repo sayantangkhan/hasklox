@@ -8,16 +8,16 @@ newtype Program a = Program [Declaration a]
 
 data Declaration a
   = VarDeclaration a ByteString (Maybe (Expression a))
-  | InnerStatement (Statement a)
+  | InnerStatement a (Statement a)
   deriving (Show)
 
 data Statement a
   = ExprStmt a (Expression a)
-  | PrintStmt (Expression a)
-  | IfStatement (IfStatement a)
-  | Block [Declaration a]
-  | While (While a)
-  | For (ForStatement a)
+  | PrintStmt a (Expression a)
+  | IfStatement a (IfStatement a)
+  | Block a [Declaration a]
+  | While a (While a)
+  | For a (ForStatement a)
   deriving (Show)
 
 data IfStatement a = IfStatementCons
@@ -233,6 +233,18 @@ instance (Show a) => Show (Expression a) where
 
 instance NonDebugShow (Expression a) where
   ndShow expression = ndPrettyPrintWithOffset expression 0
+
+instance HasMetadata Declaration where
+  info (VarDeclaration a _ _) = a
+  info (InnerStatement a _) = a
+
+instance HasMetadata Statement where
+  info (ExprStmt a _) = a
+  info (PrintStmt a _) = a
+  info (IfStatement a _) = a
+  info (While a _) = a
+  info (For a _) = a
+  info (Block a _) = a
 
 instance HasMetadata Expression where
   info (LiteralExp a _) = a

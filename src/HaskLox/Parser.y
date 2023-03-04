@@ -86,11 +86,11 @@ reversedProgram :: { [AST.Declaration Scan.Range] }
 
 declaration :: { AST.Declaration Scan.Range }
   : varDeclaration { $1 }
-  | statement { AST.InnerStatement $1 }
+  | statement { AST.InnerStatement (AST.info $1) $1 }
 
 varDeclaration :: { AST.Declaration Scan.Range }
-  : var identifierName '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (AST.info $4)) (snd $2) (Just $4) }
-  | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (fst $2)) (snd $2) Nothing }
+  : var identifierName '=' expression ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (Scan.rtRange $5)) (snd $2) (Just $4) }
+  | var identifierName ';' { AST.VarDeclaration ((Scan.rtRange $1)  <> (Scan.rtRange $3)) (snd $2) Nothing }
 
 statement :: { AST.Statement Scan.Range }
   : openIf { $1 }
@@ -103,34 +103,34 @@ nonIfStatement :: { AST.Statement Scan.Range }
   -- | whileStatement { $1 }
 
 openIf :: { AST.Statement Scan.Range }
-  : if '(' expression ')' statement { AST.IfStatement $ AST.IfStatementCons $3 $5 Nothing  }
-  | if '(' expression ')' closedIf else openIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
-  | while '(' expression ')' openIf { AST.While (AST.WhileStatement $3 $5) }
-  | openFor { AST.For $1 }
+  : if '(' expression ')' statement { AST.IfStatement (Scan.rtRange $1 <> AST.info $5) $ AST.IfStatementCons $3 $5 Nothing  }
+  | if '(' expression ')' closedIf else openIf { AST.IfStatement (Scan.rtRange $1 <> AST.info $7) $ AST.IfStatementCons $3 $5 (Just $7) }
+  | while '(' expression ')' openIf { AST.While (Scan.rtRange $1 <> AST.info $5) (AST.WhileStatement $3 $5) }
+  | openFor { AST.For (fst $1) (snd $1) }
 
 closedIf :: { AST.Statement Scan.Range }
   : nonIfStatement { $1 }
-  | if '(' expression ')' closedIf else closedIf { AST.IfStatement $ AST.IfStatementCons $3 $5 (Just $7) }
-  | while '(' expression ')' closedIf { AST.While (AST.WhileStatement $3 $5) }
-  | closedFor { AST.For $1 }
+  | if '(' expression ')' closedIf else closedIf { AST.IfStatement (Scan.rtRange $1 <> AST.info $7) $ AST.IfStatementCons $3 $5 (Just $7) }
+  | while '(' expression ')' closedIf { AST.While (Scan.rtRange $1 <> AST.info $5) (AST.WhileStatement $3 $5) }
+  | closedFor { AST.For (fst $1) (snd $1) }
 
-closedFor :: { AST.ForStatement Scan.Range }
-  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' closedIf { forConstructorVarDeclr $3 $4 $6 $8 }
-  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' closedIf { forConstructorExpression $3 $5 $7 $9  }
+closedFor :: { (Scan.Range, AST.ForStatement Scan.Range) }
+  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' closedIf { (Scan.rtRange $1 <> AST.info $8, forConstructorVarDeclr $3 $4 $6 $8) }
+  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' closedIf { (Scan.rtRange $1 <> AST.info $9, forConstructorExpression $3 $5 $7 $9)  }
 
-openFor :: { AST.ForStatement Scan.Range }
-  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' openIf { forConstructorVarDeclr $3 $4 $6 $8  }
-  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' openIf { forConstructorExpression $3 $5 $7 $9  }
+openFor :: { (Scan.Range, AST.ForStatement Scan.Range) }
+  : for '(' varDeclaration maybeExpression ';' maybeExpression ')' openIf { (Scan.rtRange $1 <> AST.info $8, forConstructorVarDeclr $3 $4 $6 $8) }
+  | for '(' maybeExpression ';' maybeExpression ';' maybeExpression ')' openIf { (Scan.rtRange $1 <> AST.info $9, forConstructorExpression $3 $5 $7 $9)  }
 
 block :: { AST.Statement Scan.Range }
-  : '{' blockInner '}' { AST.Block $2 }
+  : '{' blockInner '}' { AST.Block (Scan.rtRange $1 <> Scan.rtRange $3) $2 }
 
 blockInner :: { [AST.Declaration Scan.Range] }
   : {- empty -} { [] }
   | declaration blockInner { $1 : $2 } -- TODO: Figure out whether the reversal is necessary
 
 printStmt :: { AST.Statement Scan.Range }
-  : print expression ';' { AST.PrintStmt $2 }
+  : print expression ';' { AST.PrintStmt (Scan.rtRange $1 <> Scan.rtRange $3) $2 }
 
 exprStmt :: { AST.Statement Scan.Range }
   : expression ';' { AST.ExprStmt (AST.info $1 <> Scan.rtRange $2) $1 }
