@@ -71,3 +71,16 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hasklox
+
+benchmarks:
+  criterion-benchmarks:
+    dependencies:
+      - criterion
+      - hasklox
+    ghc-options:
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: benchmark

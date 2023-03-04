@@ -6,7 +6,7 @@ Haskell implementation of the Lox interpreter from 'Crafting Interpreters'.
 - [ ] Reimplement `for` to be desugared to `while` instead of being directly evaluated by the interpreter.
 - [ ] Figure out how to store values, functions, and classes in memory other than as AST objects.
 - [ ] Set up tests for the code already written.
-- [ ] Add some code to benchmark performance as well.
+- [x] Add some code to benchmark performance as well.
 - [x] Implement proper metadata for all nodes of the AST.
 - [ ] Figure out strictness vs. laziness in the data structures.
 - [x] Figure out how to enter and exit scopes in a balanced fashion. (Defined a new function `inBlock`)

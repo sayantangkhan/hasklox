@@ -1,5 +1,6 @@
 module HaskLox
   ( mainFunc,
+    runFile,
   )
 where
 
