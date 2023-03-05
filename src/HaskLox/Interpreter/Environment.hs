@@ -1,4 +1,4 @@
-module HaskLox.Environment (initializeEnvironment, enterScope, exitScope, lookupIdentifier, addIdentifier, identifierIsPresent, modifyIdentifier, Environment) where
+module HaskLox.Interpreter.Environment (initializeEnvironment, enterScope, exitScope, lookupIdentifier, addIdentifier, identifierIsPresent, modifyIdentifier, Environment) where
 
 import Data.ByteString.Lazy.Internal (ByteString)
 import Data.IORef

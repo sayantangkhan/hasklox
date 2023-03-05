@@ -4,14 +4,14 @@ import Control.Monad (unless)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy (fromStrict)
 import Data.Foldable (forM_)
-import HaskLox.AST (Expression)
-import HaskLox.Environment (Environment, initializeEnvironment)
 import HaskLox.Interpreter (evalProgram, runInterpreter)
+import HaskLox.Interpreter.Environment (Environment, initializeEnvironment)
+import HaskLox.Interpreter.Values (Value)
 import HaskLox.Parser (parseLox)
-import HaskLox.Scanner (Range, ausEOFfound, runAlex)
+import HaskLox.Scanner (ausEOFfound, runAlex)
 import System.IO (hFlush, isEOF, stdout)
 
-runPromptSingleLine :: Environment (Expression Range) -> IO ()
+runPromptSingleLine :: Environment Value -> IO ()
 runPromptSingleLine environment = do
   B.putStr "> "
   hFlush stdout
@@ -25,7 +25,7 @@ runPromptSingleLine environment = do
         forM_ errorMessage putStrLn
         runPromptSingleLine environment
 
-runPromptMultiLine :: Environment (Expression Range) -> B.ByteString -> IO ()
+runPromptMultiLine :: Environment Value -> B.ByteString -> IO ()
 runPromptMultiLine environment prevLines = do
   B.putStr ": "
   hFlush stdout
@@ -47,7 +47,7 @@ runPrompt = do
   runPromptSingleLine environment
 
 -- tryRun tries to evaluate the input line, and returns (True, Just errorMessage) if the line failed to parse because of an early EOF, and (False, None) if it parses successfully, and (False, Just errorMessage) due to some other error
-tryRun :: B.ByteString -> Environment (Expression Range) -> IO (Bool, Maybe String)
+tryRun :: B.ByteString -> Environment Value -> IO (Bool, Maybe String)
 tryRun input environment = do
   let parseResult = runAlex (fromStrict input) parseLox
   case parseResult of

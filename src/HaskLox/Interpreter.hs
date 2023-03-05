@@ -8,18 +8,12 @@ import Control.Monad (when)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Foldable (forM_)
-import Data.Text qualified as T
 import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 import HaskLox.AST qualified as AST
-import HaskLox.Environment (Environment, addIdentifier, enterScope, exitScope, identifierIsPresent, lookupIdentifier, modifyIdentifier)
-
-data EvalError m
-  = TypeError m T.Text
-  | ArithmeticError m T.Text
-  | ValueNotFoundError m T.Text
-  | UnreachableError T.Text
-  deriving (Eq, Show)
+import HaskLox.Interpreter.Environment (Environment, addIdentifier, enterScope, exitScope, identifierIsPresent, lookupIdentifier, modifyIdentifier)
+import HaskLox.Interpreter.Error (EvalError (..))
+import HaskLox.Interpreter.Values (Value (..), fromLiteral, prettyPrint, valueDivide, valueEq, valueExcl, valueGeq, valueGreater, valueLeq, valueLess, valueMinus, valueMult, valueNeg, valueNeq, valuePlus)
 
 newtype InterpreterState d e a = InterpreterState {runInterpreterState :: ReaderT (Environment d) (ExceptT e IO) a}
   deriving
@@ -34,13 +28,13 @@ newtype InterpreterState d e a = InterpreterState {runInterpreterState :: Reader
 runInterpreter :: Environment d -> InterpreterState d e a -> IO (Either e a)
 runInterpreter environment interpreter = runExceptT (runReaderT (runInterpreterState interpreter) environment)
 
-evalProgram :: AST.Program m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalProgram :: AST.Program m -> InterpreterState Value (EvalError m) ()
 evalProgram (AST.Program declarations) = evalDeclarations declarations
 
-evalDeclarations :: [AST.Declaration m] -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalDeclarations :: [AST.Declaration m] -> InterpreterState Value (EvalError m) ()
 evalDeclarations = mapM_ evalDeclaration
 
-evalDeclaration :: AST.Declaration m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalDeclaration :: AST.Declaration m -> InterpreterState Value (EvalError m) ()
 evalDeclaration = \case
   AST.VarDeclaration _ name possibleThunk -> do
     environment <- ask
@@ -51,42 +45,37 @@ evalDeclaration = \case
         liftIO $ addIdentifier name (Just possibleValue) environment
   AST.InnerStatement _ statement -> evalStatement statement
 
-evalStatement :: AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalStatement :: AST.Statement m -> InterpreterState Value (EvalError m) ()
 evalStatement = \case
   AST.ExprStmt _ expression -> do
     _ <- evalExpression expression
     return ()
   AST.PrintStmt _ expression -> do
     parsedExpression <- evalExpression expression
-    liftIO $ putStrLn $ AST.ndShow parsedExpression
+    liftIO $ putStrLn $ prettyPrint parsedExpression
     return ()
   AST.Block _ declarations -> do
     inBlock (evalDeclarations declarations)
   AST.IfStatement _ ifStatement -> do
-    -- Evaluate the condition to see if it's Truthy, i.e. not null or False
-    -- TODO: Refactor this to use the isTruthy function
-    evaledCondition <- evalExpression $ AST.ifStatementCondition ifStatement
-    case evaledCondition of
-      AST.LiteralExp _ (AST.LoxFalse _) -> do
-        let elseCondition = AST.ifStatementElse ifStatement
-        Data.Foldable.forM_ elseCondition evalStatement
-      AST.LiteralExp _ (AST.Nil _) -> do
-        let elseCondition = AST.ifStatementElse ifStatement
-        Data.Foldable.forM_ elseCondition evalStatement
-      _ -> do
+    (truthy, _) <- isTruthy (AST.ifStatementCondition ifStatement)
+    if truthy
+      then do
         let thenCondition = AST.ifStatementThen ifStatement
         evalStatement thenCondition
+      else do
+        let elseCondition = AST.ifStatementElse ifStatement
+        Data.Foldable.forM_ elseCondition evalStatement
   AST.While _ (AST.WhileStatement condition loop) -> evalWhile condition loop
   AST.For _ forStatement -> evalFor forStatement
 
-evalWhile :: AST.Expression m -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalWhile :: AST.Expression m -> AST.Statement m -> InterpreterState Value (EvalError m) ()
 evalWhile condition loop = do
   (conditionIsTrue, _) <- isTruthy condition
   Control.Monad.when conditionIsTrue $ do
     evalStatement loop
     evalWhile condition loop
 
-evalFor :: AST.ForStatement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+evalFor :: AST.ForStatement m -> InterpreterState Value (EvalError m) ()
 evalFor (AST.ForStatement possibleInit possibleCond possibleInc body) = do
   inBlock $ do
     case possibleInit of
@@ -99,7 +88,7 @@ evalFor (AST.ForStatement possibleInit possibleCond possibleInc body) = do
         return ()
     evalForBody possibleCond possibleInc body
   where
-    evalForBody :: Maybe (AST.Expression m) -> Maybe (AST.Expression m) -> AST.Statement m -> InterpreterState (AST.Expression m) (EvalError m) ()
+    evalForBody :: Maybe (AST.Expression m) -> Maybe (AST.Expression m) -> AST.Statement m -> InterpreterState Value (EvalError m) ()
     evalForBody c i b = do
       -- env <- ask
       case c of
@@ -118,13 +107,13 @@ evalFor (AST.ForStatement possibleInit possibleCond possibleInc body) = do
               forM_ i evalExpression
             evalForBody c i b
 
-evalExpression :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (AST.Expression m)
+evalExpression :: AST.Expression m -> InterpreterState Value (EvalError m) Value
 evalExpression = \case
-  AST.LiteralExp metadata literal -> do
-    return $ AST.LiteralExp metadata literal
-  AST.Unary _ op expression -> do
+  AST.LiteralExp _ literal -> do
+    return $ fromLiteral literal
+  AST.Unary metadata op expression -> do
     evaled <- evalExpression expression
-    applyUnaryOp op evaled
+    applyUnaryOp op metadata evaled
   AST.Binary metadata op left right -> do
     leftEvaled <- evalExpression left
     rightEvaled <- evalExpression right
@@ -156,140 +145,41 @@ evalExpression = \case
       then return exp1Evaled
       else evalExpression exp2
 
-isTruthy :: AST.Expression m -> InterpreterState (AST.Expression m) (EvalError m) (Bool, AST.Expression m)
+isTruthy :: AST.Expression m -> InterpreterState Value (EvalError m) (Bool, Value)
 isTruthy expression = do
   expEvaled <- evalExpression expression
   case expEvaled of
-    AST.LiteralExp _ (AST.LoxFalse _) -> do
+    BoolVal False -> do
       return (False, expEvaled)
-    AST.LiteralExp _ (AST.Nil _) -> do
+    NilVal -> do
       return (False, expEvaled)
     _ -> do
       return (True, expEvaled)
 
-applyUnaryOp :: AST.UnaryOp -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
-applyUnaryOp AST.Neg = \case
-  (AST.LiteralExp m literal) -> case literal of
-    AST.Number m' ln -> do
-      return $ AST.LiteralExp m (AST.Number m' (negateLoxNum ln))
-    _ -> do
-      throwError $ TypeError m "Tried to negate a non-number expression"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated expression to a literal"
-applyUnaryOp AST.Exclamation = \case
-  (AST.LiteralExp m literal) -> case literal of
-    AST.LoxFalse _ -> do
-      return $ AST.LiteralExp m (AST.LoxTrue m)
-    AST.Nil _ -> do
-      return $ AST.LiteralExp m (AST.LoxTrue m)
-    _ -> do
-      return $ AST.LiteralExp m (AST.LoxFalse m)
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated expression to a literal"
+applyUnaryOp :: AST.UnaryOp -> m -> Value -> InterpreterState d (EvalError m) Value
+applyUnaryOp AST.Neg metadata value = case valueNeg value of
+  Right negatedValue -> return negatedValue
+  Left applicationError -> throwError (metadata <$ applicationError)
+applyUnaryOp AST.Exclamation _ value = return $ valueExcl value
 
-applyBinaryOp :: AST.BinaryOp -> m -> AST.Expression m -> AST.Expression m -> InterpreterState d (EvalError m) (AST.Expression m)
-applyBinaryOp AST.IsEqual metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> do
-    if leftLiteral `AST.nonMetadataEq` rightLiteral
-      then return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-      else return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.NotEqual metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> do
-    if leftLiteral `AST.nonMetadataEq` rightLiteral
-      then return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-      else return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Less metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ x, AST.Number _ y) -> do
-      if x < y
-        then return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-        else return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `<` on non numeric types"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.LessEqual metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ x, AST.Number _ y) -> do
-      if x <= y
-        then return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-        else return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `<=` on non numeric types"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Greater metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ x, AST.Number _ y) -> do
-      if x > y
-        then return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-        else return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `>` on non numeric types"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.GreaterEqual metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ x, AST.Number _ y) -> do
-      if x >= y
-        then return $ AST.LiteralExp metadata (AST.LoxTrue metadata)
-        else return $ AST.LiteralExp metadata (AST.LoxFalse metadata)
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `>=` on non numeric types"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Plus metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ (AST.LoxInt x), AST.Number _ (AST.LoxInt y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxInt (x + y)))
-    (AST.Number _ (AST.LoxFloat x), AST.Number _ (AST.LoxFloat y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxFloat (x + y)))
-    (AST.LoxString _ x, AST.LoxString _ y) -> do
-      return $ AST.LiteralExp metadata (AST.LoxString metadata (x <> y))
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `+` on different types, or types that cannot be added"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Minus metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ (AST.LoxInt x), AST.Number _ (AST.LoxInt y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxInt (x - y)))
-    (AST.Number _ (AST.LoxFloat x), AST.Number _ (AST.LoxFloat y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxFloat (x - y)))
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `-` on different types, or types that cannot be subtracted"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Mult metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ (AST.LoxInt x), AST.Number _ (AST.LoxInt y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxInt (x * y)))
-    (AST.Number _ (AST.LoxFloat x), AST.Number _ (AST.LoxFloat y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxFloat (x * y)))
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `*` on different types, or types that cannot be multiplied"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
-applyBinaryOp AST.Divide metadata leftArg rightArg = case (leftArg, rightArg) of
-  (AST.LiteralExp _ leftLiteral, AST.LiteralExp _ rightLiteral) -> case (leftLiteral, rightLiteral) of
-    (AST.Number _ (AST.LoxInt x), AST.Number _ (AST.LoxInt y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxInt (x `div` y)))
-    (AST.Number _ (AST.LoxFloat x), AST.Number _ (AST.LoxFloat y)) -> do
-      return $ AST.LiteralExp metadata (AST.Number metadata (AST.LoxFloat (x / y)))
-    _ -> do
-      throwError $ TypeError metadata "Attempted to use `/` on different types, or types that cannot be divided"
-  _ -> do
-    throwError $ UnreachableError "Should have evaluated left and right arguments to literals"
+applyBinaryOp :: AST.BinaryOp -> m -> Value -> Value -> InterpreterState d (EvalError m) Value
+applyBinaryOp op metadata leftVal rightVal = case valueOp op leftVal rightVal of
+  Right resultVal -> return resultVal
+  Left applicationError -> throwError (metadata <$ applicationError)
+  where
+    valueOp :: AST.BinaryOp -> (Value -> Value -> Either (EvalError ()) Value)
+    valueOp AST.IsEqual = valueEq
+    valueOp AST.NotEqual = valueNeq
+    valueOp AST.Less = valueLess
+    valueOp AST.LessEqual = valueLeq
+    valueOp AST.Greater = valueGreater
+    valueOp AST.GreaterEqual = valueGeq
+    valueOp AST.Plus = valuePlus
+    valueOp AST.Minus = valueMinus
+    valueOp AST.Mult = valueMult
+    valueOp AST.Divide = valueDivide
 
-negateLoxNum :: AST.LoxNum -> AST.LoxNum
-negateLoxNum (AST.LoxInt x) = AST.LoxInt $ -1 * x
-negateLoxNum (AST.LoxFloat x) = AST.LoxFloat $ -1 * x
-
-inBlock :: InterpreterState (AST.Expression m) (EvalError m) a -> InterpreterState (AST.Expression m) (EvalError m) a
+inBlock :: InterpreterState d e a -> InterpreterState d e a
 inBlock monadicAction = do
   environment <- ask
   liftIO $ enterScope environment

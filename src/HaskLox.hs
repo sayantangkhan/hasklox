@@ -6,12 +6,12 @@ where
 
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy (fromStrict)
-import HaskLox.AST (Expression)
-import HaskLox.Environment (Environment, initializeEnvironment)
 import HaskLox.Interpreter (evalProgram, runInterpreter)
+import HaskLox.Interpreter.Environment (Environment, initializeEnvironment)
+import HaskLox.Interpreter.Values (Value)
 import HaskLox.Parser (parseLox)
 import HaskLox.REPL (runPrompt)
-import HaskLox.Scanner (Range, runAlex)
+import HaskLox.Scanner (runAlex)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 
@@ -29,7 +29,7 @@ runFile filePath = do
   environment <- initializeEnvironment
   run fileContents environment
 
-run :: B.ByteString -> Environment (Expression Range) -> IO ()
+run :: B.ByteString -> Environment Value -> IO ()
 run input environment = do
   let parseResult = runAlex (fromStrict input) parseLox
   case parseResult of

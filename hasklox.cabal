@@ -31,8 +31,10 @@ library
       HaskLox
       HaskLox.AST
       HaskLox.AST.Desugaring
-      HaskLox.Environment
       HaskLox.Interpreter
+      HaskLox.Interpreter.Environment
+      HaskLox.Interpreter.Error
+      HaskLox.Interpreter.Values
       HaskLox.Parser
       HaskLox.REPL
       HaskLox.Scanner

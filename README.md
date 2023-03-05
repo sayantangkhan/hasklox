@@ -3,6 +3,7 @@ Haskell implementation of the Lox interpreter from 'Crafting Interpreters'.
 
 ## TODOs
 
+- [ ] Fill in the implementations in Values.hs.
 - [ ] Reimplement `for` to be desugared to `while` instead of being directly evaluated by the interpreter.
 - [ ] Figure out how to store values, functions, and classes in memory other than as AST objects.
 - [ ] Set up tests for the code already written.
