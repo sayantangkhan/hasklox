@@ -1,7 +1,8 @@
-module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), ForStatement (..), ForStatementInit (..), While (..), extendOuterMetadata, nonMetadataEq, ndShow, Program (..)) where
+module HaskLox.AST (LoxNum (..), Literal (..), UnaryOp (..), BinaryOp (..), Expression (..), Statement (..), Declaration (..), HasMetadata (..), IfStatement (..), ForStatement (..), ForStatementInit (..), While (..), extendOuterMetadata, nonMetadataEq, ndShow, Program (..), FunctionCall (..)) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
+import Data.List (intercalate)
 
 newtype Program a = Program [Declaration a]
   deriving (Show)
@@ -54,6 +55,12 @@ data Expression a
   | IdentifierAssignment !a !ByteString !(Expression a)
   | LogicalOr !a !(Expression a) !(Expression a)
   | LogicalAnd !a !(Expression a) !(Expression a)
+  | FnCallExpr !a !(FunctionCall a)
+
+data FunctionCall a = FunctionCall
+  { fnCallee :: !(Expression a),
+    fnArguments :: ![Expression a]
+  }
 
 data Literal a
   = Number !a !LoxNum
@@ -186,6 +193,17 @@ prettyPrintWithOffset (LogicalOr range exp1 exp2) offset =
     ++ prettyPrintWithOffset exp1 (offset + 2)
     ++ "\n"
     ++ prettyPrintWithOffset exp2 (offset + 2)
+prettyPrintWithOffset (FnCallExpr range (FunctionCall callee args)) offset =
+  concat
+    (replicate offset " ")
+    ++ show callee
+    ++ " "
+    ++ show range
+    ++ intercalate
+      "\n"
+      ( (\a -> prettyPrintWithOffset a (offset + 2))
+          <$> args
+      )
 
 ndPrettyPrintWithOffset :: Expression a -> Int -> String
 ndPrettyPrintWithOffset (LiteralExp _ literal) offset =
@@ -227,6 +245,15 @@ ndPrettyPrintWithOffset (LogicalOr _ exp1 exp2) offset =
     ++ ndPrettyPrintWithOffset exp1 (offset + 2)
     ++ "\n"
     ++ ndPrettyPrintWithOffset exp2 (offset + 2)
+ndPrettyPrintWithOffset (FnCallExpr _ (FunctionCall callee args)) offset =
+  concat
+    (replicate offset " ")
+    ++ ndPrettyPrintWithOffset callee 0
+    ++ intercalate
+      "\n"
+      ( (\a -> ndPrettyPrintWithOffset a (offset + 2))
+          <$> args
+      )
 
 instance (Show a) => Show (Expression a) where
   show expression = prettyPrintWithOffset expression 0
@@ -254,6 +281,7 @@ instance HasMetadata Expression where
   info (IdentifierAssignment a _ _) = a
   info (LogicalAnd a _ _) = a
   info (LogicalOr a _ _) = a
+  info (FnCallExpr a _) = a
 
 -- instance HasMetadata Statement where
 --   info (ExprStmt expression) = info expression
@@ -268,3 +296,4 @@ extendOuterMetadata f (Identifier _ b) = Identifier f b
 extendOuterMetadata f (IdentifierAssignment _ b c) = IdentifierAssignment f b c
 extendOuterMetadata f (LogicalAnd _ c d) = LogicalAnd f c d
 extendOuterMetadata f (LogicalOr _ c d) = LogicalOr f c d
+extendOuterMetadata f (FnCallExpr _ b) = FnCallExpr f b

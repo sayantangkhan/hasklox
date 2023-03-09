@@ -75,6 +75,7 @@ while { Scan.RangedToken Scan.While _ }
 %left '+' '-'
 %left '*' '/'
 %right '!' NEG
+%right '('
 %%
 
 program :: { AST.Program Scan.Range }
@@ -144,6 +145,15 @@ expression :: { AST.Expression Scan.Range }
   | identifierAssignment { $1 }
   | expression or expression { AST.LogicalOr (AST.info $1 <> AST.info $3) $1 $3 }
   | expression and expression { AST.LogicalAnd (AST.info $1 <> AST.info $3) $1 $3 }
+  | functionCall { AST.FnCallExpr (fst $1) (snd $1) }
+
+functionCall :: { (Scan.Range, AST.FunctionCall Scan.Range) }
+  : expression '(' arguments ')' { (AST.info $1 <> Scan.rtRange $4, AST.FunctionCall $1 $3) }
+
+arguments :: { [AST.Expression Scan.Range] }
+  : expression { [$1] }
+  | expression ',' arguments { ($1:$3) }
+  | {- empty -} { [] }
 
 maybeExpression :: { Maybe (AST.Expression Scan.Range) }
   : expression { Just $1 }
