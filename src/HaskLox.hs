@@ -7,7 +7,8 @@ where
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy (fromStrict)
 import HaskLox.Interpreter (evalProgram, runInterpreter)
-import HaskLox.Interpreter.Environment (Environment, initializeEnvironment)
+import HaskLox.Interpreter.Builtin (initializeEnvironmentWithBuiltins)
+import HaskLox.Interpreter.Environment (Environment)
 import HaskLox.Interpreter.Values (Value)
 import HaskLox.Parser (parseLox)
 import HaskLox.REPL (runPrompt)
@@ -26,7 +27,7 @@ mainFunc = do
 runFile :: FilePath -> IO ()
 runFile filePath = do
   fileContents <- B.readFile filePath
-  environment <- initializeEnvironment
+  environment <- initializeEnvironmentWithBuiltins
   run fileContents environment
 
 run :: B.ByteString -> Environment Value -> IO ()

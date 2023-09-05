@@ -6,7 +6,8 @@ import Data.ByteString.Lazy (fromStrict)
 import Data.Foldable (forM_)
 import Data.String qualified as B
 import HaskLox.Interpreter (evalProgram, runInterpreter)
-import HaskLox.Interpreter.Environment (Environment, initializeEnvironment)
+import HaskLox.Interpreter.Builtin (initializeEnvironmentWithBuiltins)
+import HaskLox.Interpreter.Environment (Environment)
 import HaskLox.Interpreter.Values (Value)
 import HaskLox.Parser (parseLox)
 import HaskLox.Scanner (ausEOFfound, runAlex)
@@ -37,7 +38,7 @@ runPromptMultiLine environment prevlines = do
 
 runPrompt :: IO ()
 runPrompt = do
-  environment <- initializeEnvironment
+  environment <- initializeEnvironmentWithBuiltins
   HL.runInputT HL.defaultSettings $ runPromptSingleLine environment
 
 -- tryRun tries to evaluate the input line, and returns (True, Just errorMessage) if the line failed to parse because of an early EOF, and (False, None) if it parses successfully, and (False, Just errorMessage) due to some other error

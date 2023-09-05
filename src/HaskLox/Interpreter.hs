@@ -144,6 +144,8 @@ evalExpression = \case
     if exp1IsTrue
       then return exp1Evaled
       else evalExpression exp2
+  AST.FnCallExpr metadata funcCall -> do
+    undefined
 
 isTruthy :: AST.Expression m -> InterpreterState Value (EvalError m) (Bool, Value)
 isTruthy expression = do

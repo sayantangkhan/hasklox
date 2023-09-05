@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module HaskLox.Interpreter.Values (fromLiteral, Value (..), valueNeg, valueExcl, valueEq, valueNeq, valueLess, valueLeq, valueGreater, valueGeq, valuePlus, valueMinus, valueMult, valueDivide, prettyPrint) where
+module HaskLox.Interpreter.Values (fromLiteral, Value (..), valueNeg, valueExcl, valueEq, valueNeq, valueLess, valueLeq, valueGreater, valueGeq, valuePlus, valueMinus, valueMult, valueDivide, prettyPrint, BuiltinFunc (..)) where
 
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.ByteString.Lazy.Internal (ByteString)
@@ -13,7 +13,16 @@ data Value
   | StringVal !ByteString
   | BoolVal !Bool
   | NilVal
+  | Builtin !BuiltinFunc
   deriving (Eq, Show)
+
+data BuiltinFunc = BuiltinFunc Int ByteString ([Value] -> IO Value)
+
+instance Eq BuiltinFunc where
+  (==) (BuiltinFunc _ name1 _) (BuiltinFunc _ name2 _) = name1 == name2
+
+instance Show BuiltinFunc where
+  show (BuiltinFunc _ funcName _) = show funcName
 
 prettyPrint :: Value -> String
 prettyPrint (IntVal n) = show n
@@ -22,6 +31,7 @@ prettyPrint (StringVal b) = unpack b
 prettyPrint (BoolVal True) = "true"
 prettyPrint (BoolVal False) = "false"
 prettyPrint NilVal = "nil"
+prettyPrint (Builtin f) = show f
 
 fromLiteral :: Literal a -> Value
 fromLiteral (Number _ (LoxInt n)) = IntVal n
