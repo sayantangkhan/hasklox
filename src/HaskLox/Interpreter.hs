@@ -13,7 +13,7 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import HaskLox.AST qualified as AST
 import HaskLox.Interpreter.Environment (Environment, addIdentifier, enterScope, exitScope, identifierIsPresent, lookupIdentifier, modifyIdentifier)
 import HaskLox.Interpreter.Error (EvalError (..))
-import HaskLox.Interpreter.Values (Value (..), fromLiteral, prettyPrint, valueDivide, valueEq, valueExcl, valueGeq, valueGreater, valueLeq, valueLess, valueMinus, valueMult, valueNeg, valueNeq, valuePlus)
+import HaskLox.Interpreter.Values (BuiltinFunc (..), Value (..), fromLiteral, prettyPrint, valueDivide, valueEq, valueExcl, valueGeq, valueGreater, valueLeq, valueLess, valueMinus, valueMult, valueNeg, valueNeq, valuePlus)
 
 newtype InterpreterState d e a = InterpreterState {runInterpreterState :: ReaderT (Environment d) (ExceptT e IO) a}
   deriving
@@ -145,7 +145,17 @@ evalExpression = \case
       then return exp1Evaled
       else evalExpression exp2
   AST.FnCallExpr metadata funcCall -> do
-    undefined
+    let callee = AST.fnCallee funcCall
+    let arguments = AST.fnArguments funcCall
+    evaledCallee <- evalExpression callee
+    case evaledCallee of
+      Builtin (BuiltinFunc arity _ haskellFunc) -> do
+        if length arguments == arity
+          then do
+            evaledArgs <- mapM evalExpression arguments
+            liftIO $ haskellFunc evaledArgs
+          else throwError $ InvalidArgumentError metadata "Invalid number of arguments provided."
+      _ -> throwError $ TypeError metadata "Cannot apply an expression that is not a function."
 
 isTruthy :: AST.Expression m -> InterpreterState Value (EvalError m) (Bool, Value)
 isTruthy expression = do
