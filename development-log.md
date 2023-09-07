@@ -1,5 +1,11 @@
 ## Notes on progress
 
+## Sep 7, 2023
+
+#### Static resolution of closure
+
+Need to add a static analysis step between AST creation and evaluation, that I can also later use for compilation. In this step, I can decorate the AST with scope information, like where all the unbound variables are defined.
+
 ### Apr 5, 2023
 
 #### Representing functions as values

@@ -3,6 +3,8 @@ Haskell implementation of the Lox interpreter from 'Crafting Interpreters'.
 
 ## TODOs
 
+- [ ] Refactor environment and scopes to play well with the static analysis pass.
+- [ ] Add a static resolution pass in between AST creation and evalution.
 - [ ] Reimplement `for` to be desugared to `while` instead of being directly evaluated by the interpreter.
 - [ ] Set up tests for the code already written.
 - [x] Figure out how to store values, functions, and classes in memory other than as AST objects. (Storing them as Values).
